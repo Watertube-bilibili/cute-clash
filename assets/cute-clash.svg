@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">cute clash — navy kitten</title>
+  <desc id="description">An original, simplified baby kitten with a rounded navy-blue head, soft ears, wide-set eyes and a tiny smile. The background and facial details are transparent.</desc>
+  <!-- Original artwork for cute clash. Licensed under GPL-3.0-or-later with the project. -->
+  <path fill="#172B4D" fill-rule="evenodd" d="
+    M 91,210
+    C 76,163 74,107 91,63
+    C 95,52 109,51 120,59
+    L 189,105
+    C 210,96 233,91 256,91
+    C 279,91 302,96 323,105
+    L 392,59
+    C 403,51 417,52 421,63
+    C 438,107 436,163 421,210
+    C 447,236 460,267 460,301
+    C 460,392 375,451 256,451
+    C 137,451 52,392 52,301
+    C 52,267 65,236 91,210 Z
+
+    M 114,102
+    C 110,124 111,147 116,168
+    L 157,140 Z
+    M 398,102
+    C 402,124 401,147 396,168
+    L 355,140 Z
+
+    M 199,274
+    C 199,256 189,245 175,245
+    C 161,245 151,256 151,274
+    C 151,292 161,303 175,303
+    C 189,303 199,292 199,274 Z
+    M 361,274
+    C 361,256 351,245 337,245
+    C 323,245 313,256 313,274
+    C 313,292 323,303 337,303
+    C 351,303 361,292 361,274 Z
+
+    M 242,320
+    C 237,320 235,326 239,330
+    L 251,341
+    L 251,346
+    C 250,355 238,361 228,353
+    C 222,348 216,356 222,362
+    C 232,372 247,371 256,362
+    C 265,371 280,372 290,362
+    C 296,356 290,348 284,353
+    C 274,361 262,355 261,346
+    L 261,341
+    L 273,330
+    C 277,326 275,320 270,320 Z
+  "/>
+</svg>

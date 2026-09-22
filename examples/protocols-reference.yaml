@@ -1,0 +1,178 @@
+# win7-clash / Mihomo v1.19.31 协议格式参考
+#
+# 本文件中的节点全部是不能联网的模板，不是可用节点或免费订阅。
+# server / SNI 全部使用 example.invalid；UUID、密码和密钥是公开占位值。
+# 使用前仅保留自己需要的节点，并用服务端提供的完整参数替换所有占位值。
+# 密钥占位值只有格式正确，禁止在真实服务端复用。
+#
+# 已使用随包 Mihomo 的 -t 命令检查配置格式；未进行任何真实代理握手。
+# 所有自动测速、远程 Provider、GEO 规则与数据库自动更新均未启用。
+# REFERENCE 默认选中 REJECT，防止未配置时误将流量直接发送到互联网。
+# 导入 win7-clash 后，监听端口、控制器、TUN 与 DNS 由软件统一管理。
+#
+# 核验命令（仅校验，不会开启 TUN 或设置系统代理）：
+#   core\mihomo.exe -t -d .\protocol-check -f .\examples\protocols-reference.yaml
+#
+# 官方字段参考：
+# https://wiki.metacubex.one/config/proxies/ss/
+# https://wiki.metacubex.one/config/proxies/vmess/
+# https://wiki.metacubex.one/config/proxies/vless/
+# https://wiki.metacubex.one/config/proxies/trojan/
+# https://wiki.metacubex.one/config/proxies/hysteria2/
+# https://wiki.metacubex.one/config/proxies/tuic/
+# https://wiki.metacubex.one/config/proxies/anytls/
+# https://wiki.metacubex.one/config/proxies/wg/
+
+mixed-port: 0
+allow-lan: false
+bind-address: 127.0.0.1
+mode: rule
+log-level: info
+ipv6: false
+geo-auto-update: false
+profile:
+  store-selected: false
+  store-fake-ip: false
+tun:
+  enable: false
+dns:
+  enable: false
+
+proxies:
+  # 替换 server、port、cipher 和 password。
+  # 此处为 16 字节示例密钥的 Base64；AES-256 需要 32 字节密钥。
+  # 多用户 SS2022 密钥格式请完整照抄服务端配置，不能换成任意普通密码。
+  - name: TEMPLATE-SS2022
+    type: ss
+    server: example.invalid
+    port: 443
+    cipher: 2022-blake3-aes-128-gcm
+    password: "MDEyMzQ1Njc4OWFiY2RlZg=="
+    udp: true
+
+  # 示例传输为 VMess + TLS + WebSocket。
+  # 替换 server、port、uuid、servername、ws-opts.path 和 Host。
+  # 服务端若不是 WebSocket，不可直接沿用 network 与 ws-opts。
+  - name: TEMPLATE-VMess-WS-TLS
+    type: vmess
+    server: example.invalid
+    port: 443
+    uuid: "00000000-0000-4000-8000-000000000001"
+    alterId: 0
+    cipher: auto
+    udp: true
+    tls: true
+    servername: example.invalid
+    skip-cert-verify: false
+    network: ws
+    ws-opts:
+      path: /replace-with-server-websocket-path
+      headers:
+        Host: example.invalid
+
+  # 示例传输为 VLESS + REALITY + Vision over TCP。
+  # 替换 server、port、uuid、servername、reality-opts.public-key 和 short-id。
+  # public-key 必须是服务端对应的 X25519 公钥；short-id 为服务端允许的十六进制值。
+  # 此示例没有使用 XHTTP，也不证明对其他传输或任意 Xray 版本兼容。
+  - name: TEMPLATE-VLESS-REALITY
+    type: vless
+    server: example.invalid
+    port: 443
+    uuid: "00000000-0000-4000-8000-000000000002"
+    udp: true
+    tls: true
+    network: tcp
+    flow: xtls-rprx-vision
+    servername: example.invalid
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE"
+      short-id: "0123456789abcdef"
+
+  # 替换 server、port、password、sni；TLS 名称必须匹配服务端证书。
+  - name: TEMPLATE-Trojan
+    type: trojan
+    server: example.invalid
+    port: 443
+    password: "REPLACE_WITH_YOUR_TROJAN_PASSWORD"
+    udp: true
+    sni: example.invalid
+    skip-cert-verify: false
+
+  # 替换 server、port、password、sni；需要服务器与本地网络支持 UDP。
+  # 如服务端使用 salamander 混淆或端口跳跃，另按服务端参数配置。
+  - name: TEMPLATE-Hysteria2
+    type: hysteria2
+    server: example.invalid
+    port: 443
+    password: "REPLACE_WITH_YOUR_HYSTERIA2_PASSWORD"
+    sni: example.invalid
+    skip-cert-verify: false
+    alpn:
+      - h3
+
+  # 此节点为 TUIC v5：替换 server、port、uuid、password、sni。
+  # v5 使用 uuid + password，不能添加 v4 的 token 字段。
+  # ALPN 与拥塞控制请按服务端要求设置。
+  - name: TEMPLATE-TUIC-v5
+    type: tuic
+    server: example.invalid
+    port: 443
+    uuid: "00000000-0000-4000-8000-000000000003"
+    password: "REPLACE_WITH_YOUR_TUIC_V5_PASSWORD"
+    sni: example.invalid
+    alpn:
+      - h3
+    disable-sni: false
+    reduce-rtt: false
+    skip-cert-verify: false
+    udp-relay-mode: native
+    congestion-controller: bbr
+
+  # 替换 server、port、password、sni。此处为常规 AnyTLS + TLS。
+  # 保持证书验证开启，按服务端实际配置设置 ALPN 等可选项。
+  - name: TEMPLATE-AnyTLS
+    type: anytls
+    server: example.invalid
+    port: 443
+    password: "REPLACE_WITH_YOUR_ANYTLS_PASSWORD"
+    udp: true
+    sni: example.invalid
+    client-fingerprint: chrome
+    skip-cert-verify: false
+    idle-session-check-interval: 30
+    idle-session-timeout: 30
+    min-idle-session: 0
+
+  # 替换 server、port、ip、private-key 和 public-key。
+  # ip 是服务端分配给客户端的隧道地址，不是服务器公网地址。
+  # private-key 是客户端私钥，public-key 是服务端公钥，均为 32 字节 Base64。
+  # 若服务端要求预共享密钥，额外设置 pre-shared-key。
+  # 这是 WireGuard 出站协议，和软件用于接管本机流量的 TUN 开关是两件事。
+  - name: TEMPLATE-WireGuard
+    type: wireguard
+    server: example.invalid
+    port: 51820
+    ip: 10.66.66.2
+    private-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    public-key: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+    udp: true
+    mtu: 1408
+    persistent-keepalive: 0
+
+proxy-groups:
+  - name: REFERENCE
+    type: select
+    proxies:
+      - REJECT
+      - TEMPLATE-SS2022
+      - TEMPLATE-VMess-WS-TLS
+      - TEMPLATE-VLESS-REALITY
+      - TEMPLATE-Trojan
+      - TEMPLATE-Hysteria2
+      - TEMPLATE-TUIC-v5
+      - TEMPLATE-AnyTLS
+      - TEMPLATE-WireGuard
+
+rules:
+  - MATCH,REFERENCE

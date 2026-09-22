@@ -1,0 +1,15 @@
+# 本地功能测试配置：所有连接均直连，不包含任何代理节点。
+# 如需代理访问，请导入服务商提供的 Clash / Mihomo YAML 订阅。
+mixed-port: 7890
+mode: rule
+log-level: info
+ipv6: false
+proxies: []
+proxy-groups:
+  - name: 测试策略
+    type: select
+    proxies:
+      - DIRECT
+      - REJECT
+rules:
+  - MATCH,测试策略

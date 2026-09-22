@@ -1,0 +1,32 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows x86 and x64
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Download pinned dependencies
+        shell: powershell
+        run: .\scripts\fetch-dependencies.ps1
+      - name: Compile and test both architectures
+        shell: powershell
+        run: .\scripts\build.ps1 -RunTests
+      - name: Record validation scope
+        shell: powershell
+        run: |
+          'Tests ran on Windows Server 2022, not Windows 7. No host proxy changes or TUN activation.' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Get-Content artifacts\tests\result-x64.txt, artifacts\tests\result-x86.txt | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
