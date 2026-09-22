@@ -1,62 +1,54 @@
-# cute clash 兼容性与依赖说明
+# Windows 兼容性与运行环境
 
-核对日期：2026-09-22。目标系统为 **Windows 7 SP1，x86 或 x64，安装 .NET Framework 4.8**。这份说明区分上游兼容性声明与实际测试结果；当前开发机的运行测试不能替代 Windows 7 实机验收。
+核对日期：2026-09-22。Cute Clash 是 Windows 桌面软件，面向 **Windows 7 SP1、Windows 10、Windows 11**，并持续保留 Windows 7 兼容性。32 位系统用 x86，64 位系统建议 x64。
 
-## 为什么采用原生桌面界面和 Mihomo
+## 不需要安装系统 .NET
 
-界面使用 Windows Forms / .NET Framework 4.8，避免依赖 WebView2、Electron、Tauri 或新版 Flutter 的系统要求。Microsoft 的[系统要求](https://learn.microsoft.com/en-us/dotnet/framework/get-started/system-requirements)列出 Windows 7 SP1 可安装 .NET Framework 4.8；4.8.1 不属于本项目的目标运行时。
+0.3.0 的安装包和便携 ZIP 都使用 Windows Forms，自带 **.NET 6.0.36**、对应架构的 CoreCLR、Windows Desktop 组件、UCRT API-set DLL 和 `vcruntime140_cor3.dll`。这些文件只在应用目录内使用，不注册或安装系统级 .NET，也不修改 Windows 的 .NET Framework。用户不需要安装 SDK、PowerShell、.NET Framework 或另一个 .NET Runtime。
 
-Clash 是配置格式、控制接口和代理客户端生态的通称，并非单一的节点传输协议。本项目使用 **Mihomo v1.19.31** 解析 Clash / Mihomo YAML、处理规则与代理连接。该版本是核对日的[官方稳定版](https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.31)。
+系统 .NET Framework 安装失败不会再阻止这个版本仅因缺少 Framework 而启动。若 Windows 自身缺少加载器补丁、系统文件损坏或驱动条件不满足，仍需要处理具体系统问题；应用本地运行时不能代替 Windows 系统组件。
 
-[Mihomo 官方 FAQ](https://github.com/MetaCubeX/mihomo/wiki/FAQ)说明其官方 Windows 构建使用维护中的 Go 分支，支持 Windows 7 及以上。[v1.19.31 构建工作流](https://github.com/MetaCubeX/mihomo/blob/v1.19.31/.github/workflows/build.yml)也注明 Go 1.26 的 Windows 7 兼容补丁。因此本项目使用官方当前核心，**不需要为了 Windows 7 固定在已经停止演进的旧 Clash 核心**。这项声明不自动适用于用标准新版 Go 自行编译的核心。
+微软的 [Windows .NET 安装说明](https://learn.microsoft.com/en-us/dotnet/core/install/windows#windows-7--81--server-2012) 将 .NET 6 列为最后一个兼容 Win7 的系列。最终版本是 6.0.36，已经于 2024-11-12 停止官方维护；此项目保留这个生命周期限制。较新的 Mihomo 核心单独维护，不随 GUI 运行时一起冻结协议能力。
 
-| 部件 | 固定版本 / 文件 | 选择理由 |
+应用采用自包含发布，不裁剪、不合并为单个 EXE、不启用 ReadyToRun，便于核验实际加载的 DLL。运行时使用官方 NuGet 发布包原始字节；许可与第三方 notices 随包保留。
+
+## 各系统要求
+
+| 系统 | 准备事项 | 当前验证状态 |
 | --- | --- | --- |
-| x64 核心 | Mihomo v1.19.31，`windows-amd64-v1` | `v1` 是较低的 x64 指令集基线，适合较老 CPU；不是 `v3` 构建 |
-| x86 核心 | Mihomo v1.19.31，`windows-386` | 为 32 位 Windows 7 提供独立核心 |
-| TUN 驱动接口 | Wintun 0.14.1，匹配核心位数的官方 DLL | [官方说明](https://git.zx2c4.com/wintun/about/)包含 Windows 7；DLL 放在对应 `mihomo.exe` 旁 |
-| YAML 库 | YamlDotNet 16.3.0，`lib/net47` | [NuGet 元数据](https://www.nuget.org/packages/YamlDotNet/16.3.0)列出 .NET Framework 4.7 目标、无包依赖，可供 .NET Framework 4.8 程序使用 |
+| Windows 7 SP1 x86 / x64 | SP1；KB3063858 或提供相同加载接口的替代更新；使用签名驱动还需完整 SHA-2 / 服务堆栈更新 | 保留的最低系统目标，尚无实机 / VM 验收 |
+| Windows 10 x86 / x64 | 安装或完整解压对应发行包 | 目标系统，尚无独立实机验收 |
+| Windows 11 x64 | 安装或完整解压 x64 发行包；x86 包也可在兼容环境运行 | 开发机执行 x64/x86 程序、实际内核及安装流程检查 |
 
-核心支持的协议以这个固定版本的[Mihomo 配置文档](https://wiki.metacubex.one/en/config/proxies/)和配置校验结果为准，包括常见的 Shadowsocks / Shadowsocks 2022、VMess、VLESS、Trojan、Hysteria 2、TUIC、WireGuard、AnyTLS，以及相应的 Reality 等选项。不能由“支持新协议”推断为支持任何第三方私有扩展或未来协议；导入的配置仍须通过随附核心的校验。
+Windows 7 的相关官方依据：
 
-## Windows 7 准备与 TUN
+- [Microsoft .NET Windows 前置条件](https://learn.microsoft.com/en-us/dotnet/core/install/windows#windows-7--81--server-2012)：KB3063858 提供所需的安全 DLL 加载支持。安装器检查 `AddDllDirectory` / `SetDefaultDllDirectories` 是否存在，接受提供接口的替代更新。
+- [SHA-2 签名支持说明](https://support.microsoft.com/en-us/servicing/os/windows/2020/09/2019-sha-2-code-signing-support-requirement-for-windows-and-wsus)：包括 KB4490628 服务堆栈与 KB4474419 SHA-2 更新，安装后按要求重启。
+- [UCRT 部署说明](https://learn.microsoft.com/en-us/cpp/windows/universal-crt-deployment)：允许应用本地部署 UCRT。当前包使用 .NET 官方包自带文件，不复制开发机 System32 文件，不覆盖系统 DLL。
 
-1. 使用 Windows 7 **SP1**。界面需要 [.NET Framework 4.8 离线安装程序](https://support.microsoft.com/en-us/servicing/dotnetframework/2019/10/microsoft-net-framework-4-8-offline-installer-for-windows)。
-2. 安装匹配系统位数的服务堆栈更新 **KB4490628** 与 SHA-2 签名支持更新 **KB4474419**，然后重启。以 Microsoft [SHA-2 更新说明](https://support.microsoft.com/en-us/servicing/os/windows/2020/09/2019-sha-2-code-signing-support-requirement-for-windows-and-wsus)中更新版本及前置条件为准。旧系统缺少签名支持时，签名驱动的安装可能失败。
-3. 保持系统根证书、时间及安全更新正常。下载脚本和订阅 HTTPS 使用正常的证书校验，不通过忽略证书错误来绕过旧系统问题。建议保持 Windows 7 后续平台及 DLL 加载相关更新完整。
-4. TUN 创建虚拟网卡、配置路由，需要管理员权限；普通系统代理不需要创建虚拟网卡。应先保存工作，再在界面中选择管理员运行并启用 TUN。
-5. `wintun.dll` 必须与实际启动的核心位数一致，放在核心旁边。无需手动复制 DLL 到 Windows 系统目录。驱动由 Wintun 接口按需加载。
-6. 初次部署应检查防火墙、已有 VPN / 虚拟网卡及 DNS 配置冲突；如果 TUN 初始化失败，查看核心日志中的驱动或权限错误。
+系统时间、根证书及 HTTPS 信任链仍需正常。不会关闭证书或驱动签名校验。
 
-不要关闭驱动签名验证来掩盖缺少更新的问题。这里采用的 Wintun DLL 保持官方字节内容，未作二进制修改。
+## 协议核心与 TUN
 
-## VxKex NEXT 的定位
+| 部件 | 版本 | 选择说明 |
+| --- | --- | --- |
+| Mihomo | v1.19.31 | 官方 Windows amd64-v1 / 386；x64 v1 适合较老 CPU |
+| Wintun | 0.14.1 | 与核心位数匹配的官方签名 DLL；放在 `core` 内 |
+| YamlDotNet | 16.3.0 | 普通包使用 net6.0 程序集；开发者 Framework 工程使用 net47 |
+| GUI runtime | .NET 6.0.36 | 每个包内自带对应位数运行环境 |
 
-用户允许在需要时使用 VxKex NEXT。本版本的既定依赖已有上述原生 Windows 7 路线，因此没有捆绑、安装或自动启用兼容层，也不依赖它启动。
+[Mihomo 官方 FAQ](https://github.com/MetaCubeX/mihomo/wiki/FAQ) 与 [v1.19.31 构建工作流](https://github.com/MetaCubeX/mihomo/blob/v1.19.31/.github/workflows/build.yml) 说明官方 Windows 构建使用带 Win7 兼容补丁的 Go 工具链。本次实际二进制报告 Go 1.26.8、`with_gvisor`。官方 tag 源码、vendor 和补丁工具链源码均随 Release 提供，见 [源码材料说明](MIHOMO-SOURCE.md)。
 
-[VxKex NEXT](https://github.com/YuZhouRen86/VxKex-NEXT)提供 Windows API 扩展，让部分较新程序在旧系统上运行。它不是所有 Windows 10/11 程序或内核驱动的通用兼容保证。以后若某个可选部件确实需要它，应针对明确的程序版本、位数及功能做 Windows 7 测试，再决定是否作为可选安装项。不能用“已内置兼容层”替代 TUN 驱动与核心的实机验证。
+Clash 是配置格式、控制接口和客户端生态的通称，不是单一节点传输协议。当前核心可处理 Shadowsocks / SS2022、VMess、VLESS / Reality、Trojan、Hysteria2、TUIC v5、WireGuard、AnyTLS 等配置。模板只做语法校验，不代表所有服务器和新扩展都完成互通测试。
 
-## 下载、更新与完整性
+TUN 使用 Wintun + gVisor，需要管理员权限创建网卡和路由。程序安装与普通系统代理操作不需要因此提升安装器权限。真实 TUN DNS/TCP/UDP 流量、停止后路由恢复及其他 VPN 共存仍需目标机验收。
 
-`dependencies.lock.json` 锁定下载地址、版本、归档 SHA256、解包成员名和成员 SHA256。Mihomo 归档对照 GitHub release 资产 digest；Wintun 归档对照官网公布的 SHA2-256；YamlDotNet 对照 NuGet catalog 的 SHA512 后记录 SHA256。生成的源码 ZIP 及纯文本许可证没有独立上游签名，锁文件如实注明其哈希来自首次官方 HTTPS 下载。
+## VxKex NEXT
 
-开发机器运行以下命令可下载或校验，下载脚本要求 PowerShell 3.0+ 与 .NET Framework 4.8；**用户启动打包后的 GUI 不需要运行此脚本**。
+当前依赖选择有原生 Win7 路线，没有安装、打包或自动启用 VxKex NEXT。它保留为未来特定组件的候选兼容措施，不用于替代核心、驱动和目标系统验证。
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-dependencies.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-dependencies.ps1 -VerifyOnly
-```
+## 开发与实测边界
 
-下载或解包哈希不匹配时脚本停止，不运行下载文件、不降级到 HTTP、不忽略 TLS 错误。更新核心时应人工检查官方发布与兼容性说明，更新锁文件，再完成两种架构与 Windows 7 TUN 验证。当前版本固定不意味着今后无需更新；本项目没有把未经验证的 `latest` 核心自动覆盖到用户机器。
+`runtime.lock.json` 固定 SDK 6.0.428 的官方 SHA512 和运行时 6.0.36；`dependencies.lock.json` 固定核心、Wintun、YamlDotNet 的归档及成员哈希；`installer/toolchain.lock.json` 固定 NSIS。下载先校验，不关闭 HTTPS 校验。
 
-## 已完成与待完成的验证
-
-- 已验证两份核心归档、Wintun 归档、NuGet 包与所有实际使用的成员哈希。
-- 已在当前开发机执行 x64 和 x86 `mihomo.exe -v`，均报告 `Meta v1.19.31`、`go1.26.8`、`with_gvisor`。
-- 已在当前开发机校验两份 Wintun DLL 的 Authenticode 签名，签名者为 WireGuard LLC，结果为 Valid。
-- 已执行依赖脚本的准备流程与只读校验流程；在隔离测试目录验证了首次官方 HTTPS 下载，以及缓存文件被篡改后拒绝继续执行。
-- **尚未在 Windows 7 SP1 实机 / 虚拟机完成 GUI、真实远程节点连通及 TUN 路由 / DNS 验证。** 不能将当前开发机的测试结果写成“Windows 7 已实测”。项目最终测试说明可补充后续结果。
-
-Windows 7 验收至少应覆盖 x86/x64 启动、导入实际使用的订阅、代理连接、管理员 TUN 网卡创建、DNS / TCP / UDP 连通、停止后路由恢复、正常退出与异常退出后的系统代理恢复。
-
-第三方许可证及源码对应关系见 `licenses/THIRD-PARTY-NOTICES.md`。
+实际覆盖范围见 [TESTING.md](TESTING.md)。仍需 Windows 7 SP1 实机或虚拟机的界面、DPI、驱动、远程节点与 TUN 验收。支持范围是构建目标，不能等同于所有系统都已经测试。

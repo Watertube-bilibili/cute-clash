@@ -8,13 +8,18 @@ using System.Security.Principal;
 using System.Threading;
 using System.Windows.Forms;
 
-[assembly: AssemblyTitle("cute clash")]
-[assembly: AssemblyDescription("Windows 7 SP1 native Clash / Mihomo desktop client")]
-[assembly: AssemblyCompany("cute clash contributors")]
-[assembly: AssemblyProduct("cute clash")]
-[assembly: AssemblyVersion("0.2.0.0")]
-[assembly: AssemblyFileVersion("0.2.0.0")]
+[assembly: AssemblyTitle("Cute Clash")]
+[assembly: AssemblyDescription("Clash / Mihomo client for Windows 7 SP1, Windows 10 and Windows 11")]
+[assembly: AssemblyCompany("Cute Clash contributors")]
+[assembly: AssemblyProduct("Cute Clash")]
+[assembly: AssemblyCopyright("Copyright © 2026 Cute Clash contributors")]
+[assembly: AssemblyVersion("0.3.0.0")]
+[assembly: AssemblyFileVersion("0.3.0.0")]
+#if NET6_0
+[assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v6.0")]
+#else
 [assembly: System.Runtime.Versioning.TargetFramework(".NETFramework,Version=v4.8")]
+#endif
 namespace CuteClash
 {
     internal static class Program
@@ -50,17 +55,23 @@ namespace CuteClash
                 if (Int32.TryParse(args[1], out parent)) { try { using (var process = Process.GetProcessById(parent)) process.WaitForExit(15000); } catch (ArgumentException) { } }
             }
             LoadSavedLanguage(AppController.DefaultDataDirectory());
+            string protocolLink = args.Length == 1 && args[0].StartsWith("clash:", StringComparison.OrdinalIgnoreCase) ? args[0] : null;
             Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += delegate(object sender, System.Threading.ThreadExceptionEventArgs e)
-            { MessageBox.Show(AppController.Redact(e.Exception.Message), "cute clash", MessageBoxButtons.OK, MessageBoxIcon.Error); };
+            { MessageBox.Show(AppController.Redact(e.Exception.Message), "Cute Clash", MessageBoxButtons.OK, MessageBoxIcon.Error); };
             using (var mutex = new Mutex(false, MutexName))
             {
                 bool owned = false;
                 try
                 {
                     try { owned = mutex.WaitOne(0); } catch (AbandonedMutexException) { owned = true; }
-                    if (!owned) { MessageBox.Show(Localization.T("cute clash 已在运行，请从系统托盘打开。", "cute clash is already running. Open it from the system tray."), "cute clash"); return; }
+                    if (!owned)
+                    {
+                        if (protocolLink != null && ProtocolInbox.TrySend(protocolLink, 5000)) return;
+                        MessageBox.Show(protocolLink == null ? Localization.T("Cute Clash 已在运行，请从系统托盘打开。", "Cute Clash is already running. Open it from the system tray.") : Localization.T("未能将订阅链接交给已运行的 Cute Clash。请从托盘退出旧版本后重试，或在配置页手动添加订阅。", "Could not deliver the link to the running Cute Clash. Exit the older version from its tray menu and try again, or add the subscription in Profiles."), "Cute Clash");
+                        return;
+                    }
                     bool captureEnglish = args.Length == 2 && args[0] == "--capture-en";
                     bool capture = captureEnglish || (args.Length == 2 && args[0] == "--capture");
                     string data = capture ? Path.Combine(Path.GetFullPath(args[1]), "capture-data") : AppController.DefaultDataDirectory();
@@ -80,11 +91,27 @@ namespace CuteClash
                                 }
                                 form.ExitAsync().GetAwaiter().GetResult();
                             }
-                            else Application.Run(form);
+                            else
+                            {
+                                // Only the existing user's process receives private subscription links.
+                                using (var inbox = new ProtocolInbox(delegate(string link)
+                                {
+                                    try { form.BeginInvoke(new Action(delegate { form.ImportProtocolLink(link); })); }
+                                    catch (InvalidOperationException) { }
+                                }))
+                                {
+                                    form.Shown += delegate
+                                    {
+                                        inbox.Start();
+                                        if (protocolLink != null) form.BeginInvoke(new Action(delegate { form.ImportProtocolLink(protocolLink); }));
+                                    };
+                                    Application.Run(form);
+                                }
+                            }
                         }
                     }
                 }
-                catch (Exception ex) { MessageBox.Show(AppController.Redact(ex.Message), Localization.T("cute clash 启动失败", "cute clash could not start"), MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex) { MessageBox.Show(AppController.Redact(ex.Message), Localization.T("Cute Clash 启动失败", "Cute Clash could not start"), MessageBoxButtons.OK, MessageBoxIcon.Error); }
                 finally { if (owned) mutex.ReleaseMutex(); }
             }
         }

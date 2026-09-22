@@ -1,21 +1,32 @@
-<p align="center"><img src="assets/cute-clash.svg" alt="cute clash navy kitten" width="112" height="112"></p>
+<p align="center"><img src="assets/cute-clash.svg" alt="Cute Clash navy kitten" width="112" height="112"></p>
 
-# cute clash
+# Cute Clash
 
 **简体中文** · [English](README.en.md)
 
-面向 Windows 7 SP1 的 Clash / Mihomo 原生桌面客户端，版本 **0.2.0**。支持简体中文和英文，使用 Windows Forms / .NET Framework 4.8，提供 x86 / x64 独立便携包。海军蓝小奶猫图标是向 Clash 猫咪主题致敬的原创 SVG。没有 WebView、Electron 或浏览器运行时依赖。
+**Cute Clash 是一款 Clash / Mihomo Windows 桌面客户端，支持 Windows 7 SP1、Windows 10 和 Windows 11。** 版本 **0.3.0** 提供简体中文 / English、系统代理、TUN 和机场订阅一键导入。普通 Windows 发行包已经内置 .NET 运行时，无需先安装 .NET Framework、.NET Desktop Runtime 或 VC++ 运行库。没有 WebView、Electron 或浏览器运行时依赖。
 
-**当前状态：已经编译并在开发机通过实际核心与本机 HTTP / SOCKS5 转发测试；尚未在 Windows 7 实机 / 虚拟机完成 GUI、远程节点和 TUN 路由验收。** Windows 7 兼容依据来自所选组件的官方支持声明，不能替代实机测试。
+**兼容性与实测分开记录：** Windows 11 已进行程序与实际核心测试；Windows 7 SP1 是保留的最低系统目标，Windows 10 也属于目标系统，但两者尚未完成实机 / 虚拟机验收。真实远程节点与 TUN 路由仍待相应环境验证，不能用上游兼容声明代替实测。
 
-![cute clash 中文总览](docs/images/overview-zh-CN.png)
+## 下载
+
+从 [GitHub Releases](https://github.com/Watertube-bilibili/cute-clash/releases/latest) 下载可直接使用的发行包：
+
+| 系统位数 | 安装包 | 免安装便携包 |
+| --- | --- | --- |
+| 64 位 Windows | [x64 安装包](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x64-setup.exe) | [x64 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x64.zip) |
+| 32 位 Windows | [x86 安装包](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x86-setup.exe) | [x86 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x86.zip) |
+
+安装包和 ZIP 均自带相同运行环境。安装包额外提供快捷方式、卸载入口和 `clash://` 链接关联；ZIP 需完整解压，不能只取出其中的 EXE。Release 同时提供 SHA256 清单、应用源码和随附 Mihomo 的完整源码材料。
+
+![Cute Clash 中文总览](docs/images/overview-zh-CN.png)
 
 海军蓝导航、浅色工作区和小奶猫图标贯穿总览、配置、代理、设置与日志五个页面。上图是程序在开发机上的界面预览，使用示例配置。
 
 ## 开始使用
 
-1. Windows 7 请先安装 **SP1、.NET Framework 4.8**，并安装服务堆栈更新 **KB4490628** 和 SHA-2 签名更新 **KB4474419** 后重启。详细来源见 `docs/COMPATIBILITY.md`。不要安装仅支持新系统的 .NET 4.8.1 来替代 4.8。
-2. 64 位系统解压 `cute-clash-0.2.0-win7-x64.zip`；32 位系统使用 `x86.zip`。保留整个目录结构，运行 `cute-clash.exe`。
+1. Windows 10 / 11 直接运行对应位数的安装包。Windows 7 请先确保是 **SP1**，具备 **KB3063858** 或替代它的系统加载器更新；签名驱动还需要服务堆栈 **KB4490628** 和 SHA-2 更新 **KB4474419**。安装器会检查加载接口并提示缺失项，不会偷偷修改系统补丁。详细来源见 [兼容性说明](docs/COMPATIBILITY.md)。
+2. 安装后从开始菜单打开 Cute Clash；也可解压便携 ZIP，保留整个目录结构并运行 `cute-clash.exe`。安装到当前用户目录不需要管理员权限，TUN 运行时才需要提权。
 3. 在“配置”页导入本地 `.yaml/.yml`，或添加 **Clash / Mihomo 格式**的订阅 URL。软件不提供代理服务器或付费订阅，也不转换原始 Base64 节点列表及 `vless://` 单节点链接。
 4. 选定配置，在总览页连接。普通浏览器代理可开启“系统代理”；也可在单个应用内手动设置 HTTP / SOCKS5 `127.0.0.1:7890`。
 5. 若要接管不遵循系统代理的应用，在设置页“以管理员身份重启”，随后开启 **TUN 模式**并连接。TUN 使用随附 Wintun 和 gVisor，管理路由及 DNS 劫持。首次加载驱动可能需要等待。
@@ -23,11 +34,14 @@
 
 在 **设置 → 语言 → English** 选择英文并应用，按提示重新打开应用后生效。界面、托盘、对话框和程序自身错误提示均支持英文；节点名称、用户配置名称和内核原始日志保留原内容。语言切换不会自动重新连接。
 
+机场网页的“一键导入 Clash”按钮通常使用 `clash://install-config?url=…&name=…`。安装时选择“处理 clash:// 订阅链接”后，点击它会唤起 Cute Clash，打开已填写的订阅确认窗口；点击“添加”才会下载配置，不会自动连接。应用已经在托盘中运行时也可接收。已有其他代理软件处理此协议时，安装器默认保留原应用；可在安装组件页主动选择更换。支持格式及编码规则见 [快速导入](docs/QUICK-IMPORT.md)。
+
 点击关闭或最小化会进入系统托盘，继续保持当前连接。完全关闭请使用托盘菜单“退出”。正常退出、断开和内核退出会尝试恢复原来的系统代理；界面异常退出时另一个恢复进程负责恢复，并由进程作业对象关闭自己的内核。下一次启动仍会检查残留恢复记录。系统代理恢复不会覆盖用户或其他软件在运行期间改过的设置。启动应用不会自动连接。
 
 ## 已实现功能
 
 - 本地 YAML、订阅 URL 导入；更新订阅、选择、删除及核心校验。
+- `clash://` 订阅链接唤起、单实例转发与导入确认。
 - Clash / Mihomo 规则和代理组、节点切换、延迟测试、流量统计。
 - HTTP / SOCKS5 混合端口、本机系统代理、规则 / 全局 / 直连模式。
 - 管理员 TUN：Wintun、gVisor、自动路由、网卡检测、DNS 劫持、启动失败提示。
@@ -40,7 +54,7 @@
 
 ## Windows 7 与 VxKex NEXT
 
-Mihomo 官方的当前 Windows 构建使用带 Win7 兼容补丁的 Go 工具链；x64 包特意选择适合旧 CPU 的 **amd64-v1**。Windows Forms、.NET Framework 4.8、Wintun 均有 Windows 7 的运行路线。因此当前包可以按原生路线部署，**没有捆绑或安装 VxKex NEXT**。用户允许的兼容层方案保留为将来针对个别组件的备选，不能用它代替驱动兼容性测试。
+Mihomo 官方 Windows 构建使用带 Win7 兼容补丁的 Go 工具链；x64 包选择适合旧 CPU 的 **amd64-v1**。Windows Forms 使用随应用携带的 **.NET 6.0.36**，这是微软最后一个兼容 Windows 7 的 .NET 系列，已经停止官方维护；运行时与当前协议核心分别管理，不代表冻结 Mihomo 的协议能力。应用本地还附带官方运行时包中的 UCRT 与 VC 支持文件。当前包 **没有捆绑或安装 VxKex NEXT**。
 
 前置条件、官方依据和待验收项目见 `docs/COMPATIBILITY.md`、`docs/TESTING.md`。
 
@@ -56,14 +70,14 @@ Mihomo 官方的当前 Windows 构建使用带 Win7 兼容补丁的 Go 工具链
 
 ## 从源码构建
 
-构建与打包需要 .NET Framework 4.8 和 PowerShell 5.1 或以上。可用 .NET Framework 自带 C# 5 编译器，无需安装现代 .NET SDK。源代码目标保持在 Windows 7 可用的 API 范围；运行已打包的 GUI 不需要 PowerShell 升级。
+普通 Windows 发行包的构建需要 Windows x64 开发机和 PowerShell 5.1 或以上。脚本会在项目 `.tools` 中下载并校验固定版本的 .NET SDK 与 NSIS，不向系统安装开发工具。用户运行发行包不需要 PowerShell、SDK 或预装 .NET。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-dependencies.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1 -RunTests -Package
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1 -RunTests -Package -Installer
 ```
 
-输出在 `dist`。依赖地址、版本、SHA256 固定于 `dependencies.lock.json`，下载时先验证归档，再验证具体成员。测试使用隔离目录、假系统代理存储、本机 HTTP 服务和真实 Mihomo 内核；不修改开发机代理或打开 TUN。
+输出在 `dist`。依赖固定于 `dependencies.lock.json`、`runtime.lock.json` 与 `installer/toolchain.lock.json`；下载校验后再使用。测试使用隔离目录、假系统代理存储、本机 HTTP 服务和真实 Mihomo 内核；不修改开发机代理或打开 TUN。源码同时保留 `.NET Framework 4.8` 构建工程，供已有开发环境使用；普通 Release 使用自带运行时的工程。
 
 应用图标的可编辑源文件是 `assets/cute-clash.svg`，随仓库附带 PNG 预览和多尺寸 ICO。程序图标和托盘使用内嵌 ICO，无需在 Windows 7 上安装 SVG 渲染库。图标再生成脚本位于 `scripts/render-icon.cjs`，仅修改图标时需要额外构建工具。
 

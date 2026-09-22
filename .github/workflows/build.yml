@@ -13,7 +13,7 @@ jobs:
   windows:
     name: Windows x86 and x64
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -22,9 +22,15 @@ jobs:
       - name: Download pinned dependencies
         shell: powershell
         run: .\scripts\fetch-dependencies.ps1
-      - name: Compile and test both architectures
+      - name: Check the developer Framework build
         shell: powershell
         run: .\scripts\build.ps1 -RunTests
+      - name: Build and test bundled-runtime Windows packages
+        shell: powershell
+        run: .\scripts\build-windows.ps1 -RunTests -Package -Installer
+      - name: Check bilingual UI and protocol confirmation
+        shell: powershell
+        run: .\artifacts\runtime-tests\x64\cute-clash-runtime-tests.exe --ui artifacts\ci-ui
       - name: Record validation scope
         shell: powershell
         run: |

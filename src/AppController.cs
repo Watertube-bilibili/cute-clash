@@ -84,7 +84,11 @@ namespace CuteClash
             security.AddAccessRule(new FileSystemAccessRule(current, FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
             security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
             security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
+#if NET6_0
+            new DirectoryInfo(path).SetAccessControl(security);
+#else
             Directory.SetAccessControl(path, security);
+#endif
         }
         public void SaveSettings()
         {
@@ -434,12 +438,23 @@ namespace CuteClash
             if (watchdogStarted) return;
             using (var self = Process.GetCurrentProcess())
             {
-                var info = new ProcessStartInfo(System.Reflection.Assembly.GetEntryAssembly().Location,
+                var info = new ProcessStartInfo(WatchdogExecutablePath(System.Reflection.Assembly.GetEntryAssembly().Location),
                     "--watchdog " + self.Id + " " + self.StartTime.ToUniversalTime().Ticks + " " + Quote(DataDirectory))
                 { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden };
                 using (var guard = Process.Start(info)) { if (guard == null) throw new InvalidOperationException(Localization.T("无法启动代理恢复保护进程。", "Could not start the proxy recovery watchdog.")); }
             }
             watchdogStarted = true;
+        }
+        internal static string WatchdogExecutablePath(string entryAssemblyLocation)
+        {
+#if NET6_0
+            // The managed entry assembly is a DLL in a self-contained publish.
+            // Relaunch its adjacent apphost so recovery does not require an
+            // installed dotnet command or a DLL shell association.
+            return Path.ChangeExtension(entryAssemblyLocation, ".exe");
+#else
+            return entryAssemblyLocation;
+#endif
         }
         public static void RunWatchdog(int parentId, long parentTicks, string dataDirectory)
         {

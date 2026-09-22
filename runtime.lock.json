@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "runtimeVersion": "6.0.36",
+  "sdk": {
+    "version": "6.0.428",
+    "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/6.0.428/dotnet-sdk-6.0.428-win-x64.zip",
+    "sha512": "c027cb47b264a13e529f8c7f3ba33ac91152b56749c8681fede1d6cd48723ae1e5f04a43bac1302ee81e35a5383f3e169654e5bb7c1d331dc11cce5a95052e32",
+    "hashSource": "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/6.0/releases.json"
+  },
+  "notes": ".NET 6 is the final Microsoft .NET series compatible with Windows 7 SP1. It is out of support. Runtime packages are restored at this exact version from Microsoft's packages on NuGet; their original licenses and third-party notices are copied into each distribution. This does not assert Windows 7 machine testing."
+}

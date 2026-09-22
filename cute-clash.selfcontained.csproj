@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows7.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>cute-clash</AssemblyName>
+    <RootNamespace>CuteClash</RootNamespace>
+    <LangVersion>5</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <RuntimeIdentifiers>win7-x64;win7-x86</RuntimeIdentifiers>
+    <RuntimeFrameworkVersion>6.0.36</RuntimeFrameworkVersion>
+    <SelfContained>true</SelfContained>
+    <UseAppHost>true</UseAppHost>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <ApplicationManifest>src/app.manifest</ApplicationManifest>
+    <ApplicationIcon>assets/cute-clash.ico</ApplicationIcon>
+    <StartupObject>CuteClash.Program</StartupObject>
+    <!-- Keep the same system-DPI manifest as the Framework build on Windows 7. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+    <RestorePackagesPath>.tools/nuget-packages</RestorePackagesPath>
+    <RestoreSources>https://api.nuget.org/v3/index.json</RestoreSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="YamlDotNet"><HintPath>dependencies/YamlDotNet/net6.0/YamlDotNet.dll</HintPath><Private>true</Private></Reference>
+    <Compile Include="src/*.cs" />
+    <EmbeddedResource Include="assets/cute-clash.ico"><LogicalName>CuteClash.AppIcon</LogicalName></EmbeddedResource>
+  </ItemGroup>
+  <PropertyGroup Condition="'$(BuildRuntimeTests)' == 'true'">
+    <OutputType>Exe</OutputType>
+    <AssemblyName>cute-clash-runtime-tests</AssemblyName>
+    <StartupObject>CuteClash.Tests.TestRunner</StartupObject>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(BuildRuntimeTests)' == 'true'">
+    <Compile Include="tests/*.cs" />
+  </ItemGroup>
+</Project>

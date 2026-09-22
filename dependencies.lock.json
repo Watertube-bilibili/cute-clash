@@ -85,6 +85,11 @@
           "entry": "lib/net47/YamlDotNet.xml",
           "path": "dependencies/YamlDotNet/YamlDotNet.xml",
           "sha256": "079345b148f4bc90370722e39af214329e54c2c489de9e2df918f59d76699f91"
+        },
+        {
+          "entry": "lib/net6.0/YamlDotNet.dll",
+          "path": "dependencies/YamlDotNet/net6.0/YamlDotNet.dll",
+          "sha256": "d93a337d13016150ebe943ba928a21fe0794b95bb4ec3c4b242ea02b6b2148d1"
         }
       ]
     },

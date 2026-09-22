@@ -81,7 +81,7 @@ components:
     textColor: "{colors.navy}"
 ---
 
-# Design System: cute clash
+# Design System: Cute Clash
 
 ## Overview
 

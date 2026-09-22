@@ -77,6 +77,7 @@ namespace CuteClash
         private bool exitRequested;
         private bool closeInProgress;
         private bool trayHintShown;
+        private bool subscriptionDialogOpen;
         private string activePage = "Overview";
         private IList<ProxyGroup> groups = new List<ProxyGroup>();
         private int refreshTick;
@@ -86,7 +87,7 @@ namespace CuteClash
             SuspendLayout();
             controller = appController;
             Localization.Language = controller.Settings.Language;
-            Text = "cute clash";
+            Text = "Cute Clash";
             Font = new Font(AppFont, 9F, FontStyle.Regular, GraphicsUnit.Point);
             ForeColor = Ink;
             BackColor = Workspace;
@@ -122,9 +123,9 @@ namespace CuteClash
             PictureBox kitten = new PictureBox { Image = BrandBitmap(), SizeMode = PictureBoxSizeMode.Zoom, Size = new Size(33, 33), Location = new Point(7, 6), BackColor = Workspace, TabStop = false };
             kitten.Disposed += delegate { kitten.Image.Dispose(); };
             badge.Controls.Add(kitten); brand.Controls.Add(badge);
-            Label brandName = LabelOf("cute clash", 14.5F, FontStyle.Bold, Color.White);
+            Label brandName = LabelOf("Cute Clash", 14.5F, FontStyle.Bold, Color.White);
             brandName.Location = new Point(60, 10); brandName.AutoSize = true; brand.Controls.Add(brandName);
-            Label brandSubtitle = LabelOf(Localization.T("为 Windows 7 而造", "Built for Windows 7"), 8.5F, FontStyle.Regular, NavMuted);
+            Label brandSubtitle = LabelOf("Windows 7 / 10 / 11", 8.5F, FontStyle.Regular, NavMuted);
             brandSubtitle.Location = new Point(7, 62); brandSubtitle.AutoSize = true; brand.Controls.Add(brandSubtitle);
             sidebarLayout.Controls.Add(brand, 0, 0);
             FlowLayoutPanel navigation = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty };
@@ -139,7 +140,11 @@ namespace CuteClash
             sidebarState.AutoSize = true;
             sidebarState.Location = new Point(8, 8);
             sidebarBottom.Controls.Add(sidebarState);
+#if NET6_0
+            Label platform = LabelOf(Localization.T("Windows 7 SP1+\r\n内置 .NET 运行时", "Windows 7 SP1+\r\n.NET runtime included"), 8F, FontStyle.Regular, NavMuted);
+#else
             Label platform = LabelOf("Windows 7 SP1 +\r\n.NET Framework 4.8", 8F, FontStyle.Regular, NavMuted);
+#endif
             platform.AutoSize = true;
             platform.Location = new Point(8, 35);
             sidebarBottom.Controls.Add(platform);
@@ -188,7 +193,7 @@ namespace CuteClash
             BuildLogs();
 
             ContextMenuStrip trayMenu = new ContextMenuStrip();
-            ToolStripMenuItem showItem = new ToolStripMenuItem(Localization.T("显示 cute clash", "Show cute clash"));
+            ToolStripMenuItem showItem = new ToolStripMenuItem(Localization.T("显示 Cute Clash", "Show Cute Clash"));
             showItem.Click += delegate { RestoreWindow(); };
             trayMenu.Items.Add(showItem);
             trayConnect = new ToolStripMenuItem(Localization.T("开始连接", "Connect"));
@@ -198,7 +203,7 @@ namespace CuteClash
             ToolStripMenuItem exitItem = new ToolStripMenuItem(Localization.T("退出并断开连接", "Disconnect and quit"));
             exitItem.Click += async delegate { await ExitAsync(); };
             trayMenu.Items.Add(exitItem);
-            tray = new NotifyIcon { Icon = Icon, Text = Localization.T("cute clash · 未连接", "cute clash · Disconnected"), ContextMenuStrip = trayMenu, Visible = true };
+            tray = new NotifyIcon { Icon = Icon, Text = Localization.T("Cute Clash · 未连接", "Cute Clash · Disconnected"), ContextMenuStrip = trayMenu, Visible = true };
             tray.DoubleClick += delegate { RestoreWindow(); };
 
             controller.Log += OnLog;
@@ -357,7 +362,7 @@ namespace CuteClash
             Button file = MakeButton(Localization.T("导入本地文件", "Import file"), true, 126);
             file.Click += async delegate { using (OpenFileDialog dialog = new OpenFileDialog { Title = Localization.T("导入 Clash 配置", "Import Clash profile"), Filter = Localization.T("YAML 配置 (*.yaml;*.yml)|*.yaml;*.yml|所有文件 (*.*)|*.*", "YAML profiles (*.yaml;*.yml)|*.yaml;*.yml|All files (*.*)|*.*"), Multiselect = false }) { if (dialog.ShowDialog(this) == DialogResult.OK) await RunActionAsync(Localization.T("导入配置", "Import profile"), async delegate { await controller.ImportFileAsync(dialog.FileName); }); } };
             Button url = MakeButton(Localization.T("添加订阅", "Add subscription"), false, 142);
-            url.Click += async delegate { using (SubscriptionDialog dialog = new SubscriptionDialog(Font)) { if (dialog.ShowDialog(this) == DialogResult.OK) await RunActionAsync(Localization.T("下载订阅配置", "Download subscription"), async delegate { await controller.ImportUrlAsync(dialog.ProfileName, dialog.SubscriptionUrl); }); } };
+            url.Click += async delegate { await AddSubscriptionAsync(null, null); };
             importRow.Controls.Add(file); importRow.Controls.Add(url);
             layout.Controls.Add(importRow, 0, 0);
             profileList = NewListView(); profileList.Margin = Padding.Empty;
@@ -454,7 +459,12 @@ namespace CuteClash
             engineVersion = AutoLabel(Localization.T("连接后显示运行版本", "Connect to see the running version"), Ink); engineVersion.Margin = new Padding(0, 0, 0, 13); aboutLayout.Controls.Add(engineVersion, 1, 1);
             Label dataLabel = AutoLabel(Localization.T("数据位置", "App data"), Muted); dataLabel.Margin = new Padding(0, 8, 0, 0); aboutLayout.Controls.Add(dataLabel, 0, 2);
             Button openFolder = MakeButton(Localization.T("打开数据文件夹", "Open data folder"), false, 150); openFolder.MinimumSize = new Size(150, 36); openFolder.Margin = new Padding(0, 0, 0, 16); openFolder.Click += delegate { try { controller.OpenDataFolder(); } catch (Exception ex) { ReportError(Localization.T("打开数据文件夹", "Open data folder"), ex); } }; aboutLayout.Controls.Add(openFolder, 1, 2);
-            Label compatibility = AutoLabel(Localization.T("界面：.NET Framework 4.8 / Windows Forms\r\n协议支持由 Mihomo 内核决定。Windows 7 的依赖与兼容层安装见随包说明。", "Interface: .NET Framework 4.8 / Windows Forms\r\nProtocol support depends on Mihomo. See the bundled guide for Windows 7 requirements."), Muted); compatibility.MaximumSize = new Size(650, 0); compatibility.Margin = new Padding(0, 0, 0, 14); aboutLayout.Controls.Add(compatibility, 0, 3); aboutLayout.SetColumnSpan(compatibility, 2);
+#if NET6_0
+            string runtimeDescription = Localization.T("界面：Windows Forms / 内置 .NET 6.0.36\r\n无需安装系统 .NET。协议支持由 Mihomo 内核决定。Windows 7 系统补丁要求见随包说明。", "Interface: Windows Forms / bundled .NET 6.0.36\r\nNo system .NET installation required. Protocol support depends on Mihomo. See the bundled guide for Windows 7 updates.");
+#else
+            string runtimeDescription = Localization.T("界面：.NET Framework 4.8 / Windows Forms\r\n协议支持由 Mihomo 内核决定。Windows 7 的依赖与兼容层安装见随包说明。", "Interface: .NET Framework 4.8 / Windows Forms\r\nProtocol support depends on Mihomo. See the bundled guide for Windows 7 requirements.");
+#endif
+            Label compatibility = AutoLabel(runtimeDescription, Muted); compatibility.MaximumSize = new Size(650, 0); compatibility.Margin = new Padding(0, 0, 0, 14); aboutLayout.Controls.Add(compatibility, 0, 3); aboutLayout.SetColumnSpan(compatibility, 2);
             FlowLayoutPanel links = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = true, Margin = Padding.Empty };
             links.Controls.Add(MakeLink(Localization.T("Mihomo 项目", "Mihomo project"), "https://github.com/MetaCubeX/mihomo")); links.Controls.Add(MakeLink(Localization.T("配置文档", "Configuration docs"), "https://wiki.metacubex.one/"));
             Button licenses = MakeButton(Localization.T("开源许可", "Licenses"), false, 95); licenses.Click += delegate { OpenLocalDocumentation("licenses"); }; links.Controls.Add(licenses);
@@ -524,7 +534,7 @@ namespace CuteClash
             statusText.Text = action + Localization.T("失败：", " failed: ") + message;
             AppendLog(action + Localization.T("失败：", " failed: ") + message);
             RestoreWindow();
-            MessageBox.Show(this, action + Localization.T("失败。\r\n\r\n", " failed.\r\n\r\n") + message + Localization.T("\r\n\r\n可在“日志”页查看详细记录。", "\r\n\r\nSee the Logs page for details."), "cute clash", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, action + Localization.T("失败。\r\n\r\n", " failed.\r\n\r\n") + message + Localization.T("\r\n\r\n可在“日志”页查看详细记录。", "\r\n\r\nSee the Logs page for details."), "Cute Clash", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         private void OnControllerStateChanged()
@@ -576,7 +586,7 @@ namespace CuteClash
                 if (!mixedPort.Focused) mixedPort.Value = Math.Max(1024, Math.Min(65535, settings.MixedPort));
                 if (!controllerPort.Focused) controllerPort.Value = Math.Max(1024, Math.Min(65535, settings.ControllerPort));
                 engineVersion.Text = String.IsNullOrEmpty(controller.CoreVersion) ? Localization.T("连接后显示运行版本", "Connect to see the running version") : controller.CoreVersion;
-                if (tray != null) tray.Text = "cute clash · " + (running ? Localization.T("已连接", "Connected") : Localization.T("未连接", "Disconnected"));
+                if (tray != null) tray.Text = "Cute Clash · " + (running ? Localization.T("已连接", "Connected") : Localization.T("未连接", "Disconnected"));
                 if (trayConnect != null) { trayConnect.Text = running ? Localization.T("断开连接", "Disconnect") : Localization.T("开始连接", "Connect"); trayConnect.Enabled = !busy; }
                 if (!busy) statusText.Text = running ? Localization.T("运行中 · ", "Running · ") + (selected == null ? "" : selected.Name) : Localization.T("就绪 · ", "Ready · ") + (selected == null ? Localization.T("导入配置后连接", "Import a profile to connect") : Localization.T("已断开连接", "Disconnected"));
                 if (!running) { overviewUpload.Text = "—"; overviewDownload.Text = "—"; overviewConnections.Text = "—"; groups = new List<ProxyGroup>(); groupList.Items.Clear(); nodeList.Items.Clear(); groupHeading.Text = Localization.T("连接内核后读取配置中的代理组", "Connect to load proxy groups from your profile"); }
@@ -759,7 +769,7 @@ namespace CuteClash
         {
             if (busy) return;
             RestoreWindow();
-            if (MessageBox.Show(this, Localization.T("TUN 模式需要管理员权限来创建虚拟网卡。\r\n\r\n是否断开当前连接，并以管理员身份重新打开 cute clash？重新打开后可启用 TUN 并连接。", "TUN mode needs administrator rights to create a virtual adapter.\r\n\r\nDisconnect and reopen cute clash as administrator? You can then enable TUN and connect."), Localization.T("以管理员身份打开", "Run as administrator"), MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button2) != DialogResult.Yes) { SyncState(); return; }
+            if (MessageBox.Show(this, Localization.T("TUN 模式需要管理员权限来创建虚拟网卡。\r\n\r\n是否断开当前连接，并以管理员身份重新打开 Cute Clash？重新打开后可启用 TUN 并连接。", "TUN mode needs administrator rights to create a virtual adapter.\r\n\r\nDisconnect and reopen Cute Clash as administrator? You can then enable TUN and connect."), Localization.T("以管理员身份打开", "Run as administrator"), MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button2) != DialogResult.Yes) { SyncState(); return; }
             await RunActionAsync(Localization.T("重新打开应用", "Restart app"), async delegate
             {
                 await controller.StopAsync();
@@ -806,7 +816,7 @@ namespace CuteClash
             }
             languageHint.Text = Localization.T("语言设置已保存，下次启动应用时生效。", "Language preference saved. It applies the next time the app starts.");
             if (MessageBox.Show(this,
-                Localization.T("语言设置已保存。是否现在重启 cute clash？\r\n\r\n当前连接将断开。重启后请手动连接。", "Language preference saved. Restart cute clash now?\r\n\r\nThe current connection will stop. Connect manually after restarting."),
+                Localization.T("语言设置已保存。是否现在重启 Cute Clash？\r\n\r\n当前连接将断开。重启后请手动连接。", "Language preference saved. Restart Cute Clash now?\r\n\r\nThe current connection will stop. Connect manually after restarting."),
                 Localization.T("应用语言", "Apply language"), MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
             await RunActionAsync(Localization.T("重启应用", "Restart app"), async delegate
             {
@@ -867,7 +877,7 @@ namespace CuteClash
             if (!trayHintShown)
             {
                 trayHintShown = true;
-                tray.ShowBalloonTip(3000, Localization.T("cute clash 已收至通知区域", "cute clash is in the notification area"), Localization.T("双击图标恢复窗口，右键可断开连接并退出。", "Double-click the icon to restore the window. Right-click to disconnect and quit."), ToolTipIcon.Info);
+                tray.ShowBalloonTip(3000, Localization.T("Cute Clash 已收至通知区域", "Cute Clash is in the notification area"), Localization.T("双击图标恢复窗口，右键可断开连接并退出。", "Double-click the icon to restore the window. Right-click to disconnect and quit."), ToolTipIcon.Info);
             }
         }
 
@@ -928,12 +938,54 @@ namespace CuteClash
             }
         }
 
+        internal async void ImportProtocolLink(string link)
+        {
+            if (IsDisposed || Disposing || exitRequested) return;
+            RestoreWindow();
+            ProtocolImportRequest request; string error;
+            if (!ProtocolImport.TryParse(link, out request, out error))
+            {
+                MessageBox.Show(this, error, Localization.T("订阅链接无效", "Invalid subscription link"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            ShowPageForCapture("Profiles");
+            await AddSubscriptionAsync(request.Name, request.Url);
+        }
+
+        private async Task AddSubscriptionAsync(string name, string url)
+        {
+            if (busy || subscriptionDialogOpen || exitRequested)
+            {
+                statusText.Text = Localization.T("请先完成当前操作，再点击订阅导入链接。", "Finish the current operation, then open the subscription link again.");
+                return;
+            }
+            subscriptionDialogOpen = true;
+            try
+            {
+                using (SubscriptionDialog dialog = new SubscriptionDialog(Font))
+                {
+                    if (url != null) dialog.SetLink(name, url);
+                    if (dialog.ShowDialog(this) == DialogResult.OK)
+                        await RunActionAsync(Localization.T("下载订阅配置", "Download subscription"), async delegate { await controller.ImportUrlAsync(dialog.ProfileName, dialog.SubscriptionUrl); });
+                }
+            }
+            finally { subscriptionDialogOpen = false; }
+        }
+
         private sealed class SubscriptionDialog : Form
         {
             private readonly TextBox nameBox;
             private readonly TextBox urlBox;
             public string ProfileName { get { return nameBox.Text.Trim(); } }
             public string SubscriptionUrl { get { return urlBox.Text.Trim(); } }
+
+            public void SetLink(string name, string url)
+            {
+                var address = new Uri(url);
+                Text = Localization.T("确认导入订阅 · ", "Confirm subscription import · ") + address.Host;
+                nameBox.Text = String.IsNullOrWhiteSpace(name) ? address.Host : name;
+                urlBox.Text = url;
+            }
 
             public SubscriptionDialog(Font parentFont)
             {
@@ -946,7 +998,7 @@ namespace CuteClash
                 layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 41)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
                 Controls.Add(layout);
                 layout.Controls.Add(AutoLabel(Localization.T("配置名称", "Profile name"), Ink), 0, 0);
-                nameBox = new TextBox { Dock = DockStyle.Top, MaxLength = 120, AccessibleName = Localization.T("配置名称", "Profile name"), Margin = Padding.Empty }; layout.Controls.Add(nameBox, 0, 1);
+                nameBox = new TextBox { Dock = DockStyle.Top, MaxLength = 200, AccessibleName = Localization.T("配置名称", "Profile name"), Margin = Padding.Empty }; layout.Controls.Add(nameBox, 0, 1);
                 layout.Controls.Add(AutoLabel(Localization.T("订阅地址", "Subscription URL"), Ink), 0, 2);
                 urlBox = new TextBox { Dock = DockStyle.Top, MaxLength = 8192, AccessibleName = Localization.T("订阅地址", "Subscription URL"), Margin = Padding.Empty, UseSystemPasswordChar = true }; layout.Controls.Add(urlBox, 0, 3);
                 Label note = AutoLabel(Localization.T("填写返回 Clash / Mihomo YAML 的 HTTP(S) 地址。\r\n地址会保存到本机，请勿与他人分享。", "Enter an HTTP(S) URL that returns Clash / Mihomo YAML.\r\nThe URL is saved on this device. Keep it private."), Muted); note.Dock = DockStyle.Fill; layout.Controls.Add(note, 0, 4);

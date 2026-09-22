@@ -17,6 +17,11 @@ namespace CuteClash.Tests
         [STAThread]
         public static int Main(string[] args)
         {
+            if (args.Length == 2 && args[0] == "--ui")
+            {
+                try { Console.WriteLine("PASS " + (LocalizationTests.CaptureUi(args[1]) + ProtocolUiTests.Run(Path.Combine(args[1], "protocol"))) + " bilingual UI and import confirmation groups"); return 0; }
+                catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+            }
             string project = args[0];
             string architecture = IntPtr.Size == 8 ? "x64" : "x86";
             string scratch = Path.Combine(project, "artifacts", "tests", "run-" + architecture + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
@@ -27,6 +32,14 @@ namespace CuteClash.Tests
                 Console.WriteLine("PASS profile parsing, bounds, normalization, persistence: " + passed + " groups");
                 passed += LocalizationTests.Run(Path.Combine(scratch, "localization"));
                 Console.WriteLine("PASS Chinese/English normalization and persisted language settings");
+                passed += ProtocolImportTests.Run(Path.Combine(scratch, "protocol-import"));
+                Console.WriteLine("PASS clash:// parsing, private same-user forwarding and bounded pipe I/O");
+#if NET6_0
+                Assert(typeof(object).Assembly.Location.StartsWith(AppDomain.CurrentDomain.BaseDirectory, StringComparison.OrdinalIgnoreCase), "Runtime loads from this package, not the system .NET installation");
+                Console.WriteLine("Bundled runtime: " + System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
+                passed += RuntimeCompatTests.Run(Path.Combine(scratch, "runtime-compatibility"));
+                Console.WriteLine("PASS legacy JSON, nested API values and bundled-runtime process paths");
+#endif
                 TestProxyRecovery(Path.Combine(scratch, "recovery"));
                 var native = new WinInetProxyBackend().Read();
                 Assert(native != null, "Native WinINet snapshot can be read (no write)");

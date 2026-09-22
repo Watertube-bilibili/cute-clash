@@ -1,21 +1,32 @@
-<p align="center"><img src="assets/cute-clash.svg" alt="cute clash navy kitten" width="112" height="112"></p>
+<p align="center"><img src="assets/cute-clash.svg" alt="Cute Clash navy kitten" width="112" height="112"></p>
 
-# cute clash
+# Cute Clash
 
 [简体中文](README.md) · **English**
 
-A native Clash / Mihomo desktop client targeting **Windows 7 SP1**, with Chinese and English interfaces. Version **0.2.0** uses C# 5, Windows Forms and .NET Framework 4.8. Its original navy kitten SVG pays homage to Clash's feline theme. No Electron, WebView or browser runtime is required.
+A native Clash / Mihomo desktop client for **Windows 7 SP1, Windows 10 and Windows 11**, with Chinese and English interfaces. Version **0.3.0** includes its own .NET runtime and native support libraries: no separate .NET Framework, .NET Desktop Runtime or VC++ installation is needed. The approved navy kitten artwork and interface remain unchanged. No Electron, WebView or browser runtime is required.
 
-**Validation status:** the x86 and x64 builds have been tested on the Windows 11 development machine. Windows 7 startup, real remote proxy handshakes and TUN routing have **not** been tested on a Windows 7 machine or VM. Upstream compatibility statements are not a substitute for that acceptance test.
+**Validation status:** x86 and x64 builds are tested on the Windows 11 development machine. Windows 7 SP1 and Windows 10 are target systems but still require machine/VM acceptance. Real remote proxy handshakes and TUN routing remain untested. Upstream compatibility statements are not a substitute for those tests.
 
-![cute clash English overview](docs/images/overview-en.png)
+## Download
+
+Use [GitHub Releases](https://github.com/Watertube-bilibili/cute-clash/releases/latest) for ready-to-run downloads:
+
+| Windows architecture | Installer | Portable ZIP |
+| --- | --- | --- |
+| 64-bit | [x64 setup](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x64-setup.exe) | [x64 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x64.zip) |
+| 32-bit | [x86 setup](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x86-setup.exe) | [x86 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x86.zip) |
+
+Both include the same runtime. Setup adds shortcuts, an uninstaller and optional `clash://` handling. Extract the entire portable ZIP; copying only its EXE will not work. Releases include checksums, application source and complete Mihomo source materials.
+
+![Cute Clash English overview](docs/images/overview-en.png)
 
 Navy navigation, a light workspace and the kitten icon appear across Overview, Profiles, Proxies, Settings and Logs. This preview was rendered by the application on the development machine with a sample profile.
 
 ## Get started
 
-1. On Windows 7, install **SP1 and .NET Framework 4.8**, plus the **KB4490628** servicing stack update and **KB4474419** SHA-2 update, then restart. Use 4.8, not Windows 10/11-only 4.8.1. Sources and requirements are in [Compatibility](docs/COMPATIBILITY.md).
-2. Extract the whole `cute-clash-0.2.0-win7-x64.zip` or `x86.zip` folder, matching your OS architecture, and run `cute-clash.exe`.
+1. On Windows 10/11, run the matching installer. Windows 7 needs **SP1**, **KB3063858** or a superseding loader update, plus **KB4490628** and **KB4474419** for signed driver support. Setup checks loader APIs and explains missing requirements. See [Compatibility](docs/COMPATIBILITY.md).
+2. Open Cute Clash from the Start menu, or extract the complete portable ZIP and run `cute-clash.exe`. Setup installs for the current user without elevation; TUN requires elevation when enabled.
 3. To switch from the default Chinese interface, open **设置 → 语言**, choose **English**, apply and restart the app when prompted. Switching language does not reconnect automatically.
 4. Import a local YAML file or a **Clash / Mihomo YAML subscription URL** in Profiles. No proxy service or subscription is included. Raw Base64 node lists and individual `vless://` links are not converted.
 5. Select a profile and connect. Enable System proxy for applications using Windows proxy settings, or configure HTTP / SOCKS5 `127.0.0.1:7890` directly in an app.
@@ -24,9 +35,12 @@ Navy navigation, a light workspace and the kitten icon appear across Overview, P
 
 Closing or minimizing the window hides it in the notification area. Use the tray's Exit command to stop completely. The app starts disconnected. Disconnecting and exiting attempt to restore previous WinINet proxy settings. A helper process and a Windows job object handle proxy recovery and core cleanup after an unexpected GUI exit. Recovery preserves changes made by another application or the user.
 
+Provider one-click import buttons using `clash://install-config?url=…&name=…` open a prefilled confirmation dialog, including when the app is already running. Download starts only after Add; the app does not connect automatically. Select the protocol component during setup. An existing handler is left selected by default unless you explicitly choose to replace it. See [import formats](docs/QUICK-IMPORT.md).
+
 ## Features
 
 - YAML profile import, subscription updates, validation, selection and deletion.
+- `clash://` import links, private forwarding to the running instance and import confirmation.
 - Proxy groups, node selection, latency tests and traffic counters.
 - HTTP / SOCKS5 mixed listener, system proxy, rule / global / direct routing.
 - Administrator TUN mode using Wintun, gVisor, automatic routes and DNS interception.
@@ -40,7 +54,7 @@ The pinned engine is **Mihomo v1.19.31**, checked on 2026-09-22. It supports con
 
 ## Windows 7 compatibility
 
-Official Mihomo Windows builds use a Go toolchain with Windows 7 compatibility patches. The x64 package uses the **amd64-v1** CPU baseline. The GUI targets .NET Framework 4.8, and the Wintun DLL matches the core architecture. VxKex NEXT is not required or bundled for this dependency set. See the [official Mihomo FAQ](https://github.com/MetaCubeX/mihomo/wiki/FAQ), [compatibility notes](docs/COMPATIBILITY.md) and [test matrix](docs/TESTING.md).
+Official Mihomo Windows builds use a Go toolchain with Windows 7 compatibility patches. The x64 package uses the **amd64-v1** CPU baseline. The GUI bundles **.NET 6.0.36**, the final .NET series compatible with Windows 7; that series is out of Microsoft support. Its lifecycle is separate from the current Mihomo protocol core. UCRT and VC support files come from the official runtime package. VxKex NEXT is not bundled. See the [compatibility notes](docs/COMPATIBILITY.md) and [test matrix](docs/TESTING.md).
 
 ## Data and configuration
 
@@ -56,14 +70,14 @@ System proxy changes affect the current user's default WinINet connection, inclu
 
 ## Build
 
-On Windows with **.NET Framework 4.8 and PowerShell 5.1 or later**:
+On a 64-bit Windows development machine with **PowerShell 5.1 or later**:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\fetch-dependencies.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1 -RunTests -Package
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1 -RunTests -Package -Installer
 ```
 
-The built-in .NET Framework C# compiler is sufficient; a current .NET SDK is not required. Portable outputs are in `dist`. Dependencies are pinned by HTTPS URL and checksum in `dependencies.lock.json`; downloads fail on a mismatch. Tests use isolated directories, a fake system-proxy store, local HTTP fixtures and the real core. They do not activate host TUN or change host proxy settings.
+The script downloads pinned .NET SDK and NSIS tools into `.tools`, without system installation. End users need no SDK or PowerShell. Outputs are in `dist`; dependencies are pinned in `dependencies.lock.json`, `runtime.lock.json` and `installer/toolchain.lock.json`. Tests use isolated directories, a fake proxy store, local HTTP fixtures and the real core. They do not activate host TUN or change host proxy settings. The older Framework build project remains available to developers; standard Releases use the bundled-runtime project.
 
 The SVG source is [assets/cute-clash.svg](assets/cute-clash.svg); PNG and a multi-resolution ICO are included. The executable and tray load the embedded ICO, so no SVG engine is needed at runtime. `scripts/render-icon.cjs` regenerates the derived icon files when the artwork changes.
 

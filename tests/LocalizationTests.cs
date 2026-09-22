@@ -72,7 +72,7 @@ public static class LocalizationTests
                     using (var form = new MainForm(controller))
                     {
                         form.Show(); Application.DoEvents();
-                        Check(form.Text == "cute clash", "Application brand");
+                        Check(form.Text == "Cute Clash", "Application brand");
                         Check(!controller.IsRunning && !controller.Settings.SystemProxyEnabled && !controller.Settings.TunEnabled, "UI launch leaves networking inactive");
                         Check(File.ReadAllText(Path.Combine(data, "settings.json")) == saved, "Building and syncing UI does not save settings");
                         foreach (string page in new[] { "Overview", "Profiles", "Proxies", "Settings", "Logs" })
