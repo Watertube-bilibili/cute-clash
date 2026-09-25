@@ -1,7 +1,7 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 param(
     [ValidateSet('x64', 'x86', 'all')][string]$Architecture = 'all',
-    [string]$Version = '0.3.0',
+    [string]$Version = '0.3.1',
     [string]$PayloadRoot,
     [string]$OutputRoot
 )

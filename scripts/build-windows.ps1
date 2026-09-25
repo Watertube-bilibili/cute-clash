@@ -2,7 +2,7 @@
 param([switch]$RunTests, [switch]$Package, [switch]$Installer)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$version = '0.3.0'
+$version = '0.3.1'
 $runtimeLock = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'runtime.lock.json') | ConvertFrom-Json
 $sdkDirectory = Join-Path $projectRoot '.tools\dotnet6'
 $sdkArchive = Join-Path $projectRoot ('.tools\dotnet-sdk-' + $runtimeLock.sdk.version + '-win-x64.zip')

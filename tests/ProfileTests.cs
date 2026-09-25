@@ -1,6 +1,11 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 using CuteClash;
 using YamlDotNet.RepresentationModel;
 
@@ -14,6 +19,7 @@ public static class ProfileTests
         int passed = 0;
         const string sample = "mixed-port: 54321\nexternal-controller: 0.0.0.0:8888\nsecret: hostile\n" +
             "port: 1234\nsocks-port: 1235\nredir-port: 1236\ntproxy-port: 1237\nallow-lan: true\nbind-address: '*'\n" +
+            "authentication: ['subscription-user:subscription-password']\nskip-auth-prefixes: ['10.0.0.0/8']\n" +
             "external-controller-tls: 0.0.0.0:444\nexternal-controller-pipe: secret\nexternal-ui: C:/Windows\nexternal-ui-url: https://example.com/archive.zip\n" +
             "script: {code: unsafe}\ngeox-url: {geoip: 'https://example.com/custom.dat'}\n" +
             "tuic-server: {enable: true, listen: '0.0.0.0:9099'}\nntp: {enable: true, write-to-system: true}\nexternal-doh-server: /dns-query\n" +
@@ -40,10 +46,23 @@ public static class ProfileTests
         Check(Value(runtime, "external-controller") == "127.0.0.1:19090" && Value(runtime, "secret") == secret, "Controller isolation");
         Check(Value(runtime, "mixed-port") == "7890" && Value(runtime, "allow-lan") == "false" && Value(runtime, "bind-address") == "127.0.0.1", "Inbound isolation");
         foreach (string key in new[] { "port", "socks-port", "redir-port", "tproxy-port" }) Check(Value(runtime, key) == "0", "Disabled inbound " + key);
-        foreach (string key in new[] { "external-controller-tls", "external-controller-pipe", "external-ui", "external-ui-url", "script", "geox-url", "tunnels", "tuic-server", "ntp", "external-doh-server" }) Check(Get(runtime, key) == null, "Unsafe override survived: " + key);
+        foreach (string key in new[] { "external-controller-tls", "external-controller-pipe", "external-ui", "external-ui-url", "script", "tunnels", "tuic-server", "ntp", "external-doh-server" }) Check(Get(runtime, key) == null, "Unsafe override survived: " + key);
         Check(((YamlSequenceNode)Get(runtime, "listeners")).Children.Count == 0, "Listeners cleared");
         Check(Value((YamlMappingNode)Get(runtime, "tun"), "enable") == "false", "Imported TUN cannot enable itself");
-        Check(Value((YamlMappingNode)Get(runtime, "dns"), "listen") == "127.0.0.1:1053", "DNS localhost binding");
+        Check(Value((YamlMappingNode)Get(runtime, "dns"), "listen") == "", "Unneeded DNS listener disabled");
+        passed++;
+
+        Check(((YamlSequenceNode)Get(runtime, "authentication")).Children.Count == 0, "Managed loopback proxy must not require subscription credentials");
+        var skipAuth = (YamlSequenceNode)Get(runtime, "skip-auth-prefixes");
+        Check(skipAuth.Children.Count == 2 && ((YamlScalarNode)skipAuth.Children[0]).Value == "127.0.0.1/32" && ((YamlScalarNode)skipAuth.Children[1]).Value == "::1/128", "Authentication bypass policy is limited to loopback");
+        Check(File.ReadAllText(store.GetProfilePath(imported.Id)).Contains("subscription-user:subscription-password"), "Authentication changes do not alter the source profile");
+        passed++;
+
+        Check(Value((YamlMappingNode)Get(runtime, "geox-url"), "geoip") == "https://example.com/custom.dat", "Custom GEO download mirror retained");
+        foreach (string invalidGeo in new[] { "[]", "not-a-map", "{geoip: []}", "{geoip: ''}", "{geoip: 'file:///C:/Windows/system.ini'}", "{geoip: 'ftp://example.test/data'}", "{geoip: 'https://name:private-password@example.test/data'}", "{geoip: 'https://example.test/data#fragment'}" })
+            Fails(delegate { store.ValidateText("geox-url: " + invalidGeo + "\nproxies: []\n"); }, "Invalid GEO download address accepted");
+        var geoUrls = (YamlMappingNode)Get(Read(store.ValidateText("geox-url: {geoip: 'https://cdn.example.test/geoip.dat?signature=a%2Bb', mmdb: 'http://mirror.example.test/Country.mmdb', asn: 'https://cdn.example.test/asn.mmdb', geosite: 'https://cdn.example.test/geosite.dat'}\nproxies: []\n")), "geox-url");
+        Check(Value(geoUrls, "geoip").EndsWith("?signature=a%2Bb") && Value(geoUrls, "mmdb").StartsWith("http://"), "Signed HTTPS mirrors and HTTP GEO mirrors retain exact addresses");
         passed++;
 
         YamlMappingNode node = (YamlMappingNode)((YamlSequenceNode)Get(runtime, "proxies")).Children[0];
@@ -63,8 +82,12 @@ public static class ProfileTests
         YamlMappingNode tun = (YamlMappingNode)Get(runtime, "tun");
         Check(Value(tun, "enable") == "true" && Value(tun, "stack") == "gvisor" && Value(tun, "device") == "cute-clash", "Managed TUN settings");
         Check(Get(tun, "route-address") == null && Value(tun, "auto-route") == "true", "Imported routes discarded");
+        Check(Value(tun, "strict-route") == "false", "TUN must not force Windows strict-route firewall filters");
+        var hijack = (YamlSequenceNode)Get(tun, "dns-hijack");
+        Check(hijack.Children.Count == 2 && ((YamlScalarNode)hijack.Children[0]).Value == "any:53" && ((YamlScalarNode)hijack.Children[1]).Value == "tcp://any:53", "Both UDP and TCP DNS hijacking configured");
         YamlMappingNode dns = (YamlMappingNode)Get(runtime, "dns");
         Check(Value(dns, "enable") == "true" && Value(dns, "enhanced-mode") == "fake-ip", "TUN DNS enabled");
+        Check(Value(dns, "listen") == "", "TUN uses internal DNS without occupying port 1053");
         Check(((YamlScalarNode)((YamlSequenceNode)Get(dns, "nameserver")).Children[0]).Value == "https://example.com/dns-query", "Custom DNS retained");
         Check(Value((YamlMappingNode)Get((YamlMappingNode)Get(runtime, "proxy-providers"), "remote"), "path") == providerPath, "Stable provider name");
         Check(File.Exists(runtimePath + ".bak"), "Runtime atomic backup missing");
@@ -116,6 +139,94 @@ public static class ProfileTests
         store.Delete(imported.Id);
         Check(!File.Exists(store.GetProfilePath(imported.Id)) && !File.Exists(store.GetProfilePath(imported.Id) + ".bak"), "Profile delete failed");
         return passed + 1;
+    }
+
+    // Exercises the real packaged core with fixtures only. No system proxy, TUN,
+    // routing or public DNS changes are made by this test.
+    public static async Task<int> RunCoreCompatibilityAsync(string corePath, string scratch)
+    {
+        Directory.CreateDirectory(scratch);
+        var dnsServer = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        int dnsPort = ((IPEndPoint)dnsServer.Client.LocalEndPoint).Port;
+        Task dnsFixture = Task.Run(delegate
+        {
+            try
+            {
+                for (;;)
+                {
+                    IPEndPoint remote = null; byte[] request = dnsServer.Receive(ref remote);
+                    if (request.Length < 17) continue;
+                    int questionEnd = 12;
+                    while (questionEnd < request.Length && request[questionEnd] != 0) questionEnd += 1 + request[questionEnd];
+                    questionEnd += 5;
+                    if (questionEnd > request.Length) continue;
+                    byte[] response = new byte[questionEnd + 16]; Array.Copy(request, response, questionEnd);
+                    response[2] = 0x81; response[3] = 0x80; response[6] = 0; response[7] = 1;
+                    response[8] = response[9] = response[10] = response[11] = 0;
+                    byte[] answer = { 0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 30, 0, 4, 127, 0, 0, 1 };
+                    Array.Copy(answer, 0, response, questionEnd, answer.Length);
+                    dnsServer.Send(response, response.Length, remote);
+                }
+            }
+            catch (SocketException) { }
+            catch (ObjectDisposedException) { }
+        });
+        Process process = null; Task<string> stdout = null, stderr = null;
+        try
+        {
+            var store = new ProfileStore(Path.Combine(scratch, "data"));
+            string source = "authentication: ['airport:password']\nskip-auth-prefixes: []\nproxies: []\nrules: ['MATCH,DIRECT']\n" +
+                "geox-url: {geoip: 'http://127.0.0.1:" + dnsPort + "/mirror.dat'}\n" +
+                "dns:\n  enable: true\n  listen: '127.0.0.1:1053'\n  ipv6: false\n  use-hosts: false\n  use-system-hosts: false\n" +
+                "  enhanced-mode: redir-host\n  default-nameserver: ['127.0.0.1:" + dnsPort + "']\n  nameserver: ['udp://127.0.0.1:" + dnsPort + "']\n";
+            ProfileInfo profile = store.ImportText("Local compatibility fixture", null, source);
+            var settings = new AppSettings { MixedPort = FreePort(), ControllerPort = FreePort(), SelectedProfileId = profile.Id };
+            while (settings.MixedPort == settings.ControllerPort) settings.ControllerPort = FreePort();
+            settings.Profiles.Add(profile);
+            string runtime = store.BuildRuntimeConfig(settings, "local-profile-test-secret", Path.Combine(scratch, "runtime.yaml"));
+            var info = new ProcessStartInfo(corePath, "-d \"" + scratch + "\" -f \"" + runtime + "\"")
+            { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = scratch };
+            foreach (string key in new System.Collections.Generic.List<string>(System.Linq.Enumerable.Cast<string>(info.EnvironmentVariables.Keys)))
+                if (key.StartsWith("CLASH_OVERRIDE_", StringComparison.OrdinalIgnoreCase)) info.EnvironmentVariables.Remove(key);
+            process = Process.Start(info); stdout = process.StandardOutput.ReadToEndAsync(); stderr = process.StandardError.ReadToEndAsync();
+            using (var client = new HttpClient(new HttpClientHandler { UseProxy = false }))
+            {
+                client.Timeout = TimeSpan.FromSeconds(2);
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "local-profile-test-secret");
+                string api = "http://127.0.0.1:" + settings.ControllerPort;
+                bool ready = false;
+                for (int i = 0; i < 60 && !ready && !process.HasExited; i++)
+                {
+                    try { using (var response = await client.GetAsync(api + "/version")) ready = response.IsSuccessStatusCode; }
+                    catch (HttpRequestException) { }
+                    catch (TaskCanceledException) { }
+                    if (!ready) await Task.Delay(100);
+                }
+                Check(ready, "Real Mihomo core did not start for the local compatibility fixture");
+                string result = await client.GetStringAsync(api + "/dns/query?name=cute-clash-local-test.invalid&type=A");
+                Check(result.Contains("127.0.0.1"), "Internal DNS resolver must work when dns.listen is empty");
+                string configuration = await client.GetStringAsync(api + "/configs");
+                Check(configuration.Contains("http://127.0.0.1:" + dnsPort + "/mirror.dat"), "Real core must retain a configured GEO mirror");
+            }
+            return 1;
+        }
+        finally
+        {
+            dnsServer.Close();
+            if (process != null)
+            {
+                if (!process.HasExited) { process.Kill(); process.WaitForExit(5000); }
+                if (stdout != null && stderr != null) File.WriteAllText(Path.Combine(scratch, "core-compatibility.log"), stdout.GetAwaiter().GetResult() + stderr.GetAwaiter().GetResult());
+                process.Dispose();
+            }
+            dnsFixture.GetAwaiter().GetResult();
+        }
+    }
+
+    private static int FreePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop(); return port;
     }
 
     private static YamlMappingNode Read(string text) { YamlStream yaml = new YamlStream(); yaml.Load(new StringReader(text)); return (YamlMappingNode)yaml.Documents[0].RootNode; }

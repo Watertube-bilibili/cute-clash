@@ -4,18 +4,18 @@
 
 **简体中文** · [English](README.en.md)
 
-**Cute Clash 是一款 Clash / Mihomo Windows 桌面客户端，支持 Windows 7 SP1、Windows 10 和 Windows 11。** 版本 **0.3.0** 提供简体中文 / English、系统代理、TUN 和机场订阅一键导入。普通 Windows 发行包已经内置 .NET 运行时，无需先安装 .NET Framework、.NET Desktop Runtime 或 VC++ 运行库。没有 WebView、Electron 或浏览器运行时依赖。
+**Cute Clash 是一款面向 Windows 7 SP1、Windows 10 和 Windows 11 的 Clash / Mihomo 桌面客户端。** 版本 **0.3.1** 提供简体中文 / English、系统代理、TUN 和机场订阅一键导入。普通 Windows 发行包已经内置 .NET 运行时，无需先安装 .NET Framework、.NET Desktop Runtime 或 VC++ 运行库。没有 WebView、Electron 或浏览器运行时依赖。
 
-**兼容性与实测分开记录：** Windows 11 已进行程序与实际核心测试；Windows 7 SP1 是保留的最低系统目标，Windows 10 也属于目标系统，但两者尚未完成实机 / 虚拟机验收。真实远程节点与 TUN 路由仍待相应环境验证，不能用上游兼容声明代替实测。
+**0.3.1 是连接修复预览版。** 0.3.0 收到 Win7 SP1 x64 显示“已连接”但无法代理的报告；此版修复已复现的本地监听误判、拨号代理遗漏和下载问题，并增加 TUN 网卡 / 路由检查。测试运行于 Windows 11，尚无 Win7 实机 / VM 验收，不能声称用户机器的问题已全部解决。具体修复及开源来源见 [更新记录](CHANGELOG.md) 和 [参考实现](docs/OPEN-SOURCE-REFERENCES.md)。
 
 ## 下载
 
-从 [GitHub Releases](https://github.com/Watertube-bilibili/cute-clash/releases/latest) 下载可直接使用的发行包：
+从 [0.3.1 修复预览 Release](https://github.com/Watertube-bilibili/cute-clash/releases/tag/v0.3.1) 下载自带运行环境的发行包：
 
 | 系统位数 | 安装包 | 免安装便携包 |
 | --- | --- | --- |
-| 64 位 Windows | [x64 安装包](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x64-setup.exe) | [x64 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x64.zip) |
-| 32 位 Windows | [x86 安装包](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x86-setup.exe) | [x86 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x86.zip) |
+| 64 位 Windows | [x64 安装包](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.1/cute-clash-0.3.1-windows-x64-setup.exe) | [x64 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.1/cute-clash-0.3.1-windows-x64.zip) |
+| 32 位 Windows | [x86 安装包](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.1/cute-clash-0.3.1-windows-x86-setup.exe) | [x86 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.1/cute-clash-0.3.1-windows-x86.zip) |
 
 安装包和 ZIP 均自带相同运行环境。安装包额外提供快捷方式、卸载入口和 `clash://` 链接关联；ZIP 需完整解压，不能只取出其中的 EXE。Release 同时提供 SHA256 清单、应用源码和随附 Mihomo 的完整源码材料。
 
@@ -66,7 +66,7 @@ Mihomo 官方 Windows 构建使用带 Win7 兼容补丁的 Go 工具链；x64 �
 
 远程 rule/proxy-provider 缓存写入 `providers/<配置ID>` 内生成的路径，绝对路径或目录跳转会被拒绝。若使用 `type: file` 的 Provider，需自行将对应文件放入受管路径，可在生成的运行配置中查看位置。常见 HTTP/HTTPS Provider 可直接下载；源配置的相对文件不会自动被复制。首次使用 GEO 数据规则时，核心可能需要联网下载数据。
 
-系统代理修改的是当前用户的 WinINet 默认连接设置，并保留 PAC / 自动检测状态以便恢复；它不修改系统级 WinHTTP 或每个 VPN / 拨号连接的独立代理。需要覆盖更多应用时使用 TUN。
+系统代理修改当前用户的 WinINet 局域网连接及可枚举的拨号 / VPN 连接，逐条保存 PAC / 自动检测状态，并回读确认写入结果；不修改系统级 WinHTTP。失败时尝试回滚，恢复时保留其他软件已更改的设置。需要覆盖更多应用时使用 TUN。
 
 ## 从源码构建
 

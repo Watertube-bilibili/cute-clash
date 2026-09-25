@@ -41,6 +41,14 @@ namespace CuteClash.Tests
                 Console.WriteLine("PASS legacy JSON, nested API values and bundled-runtime process paths");
 #endif
                 TestProxyRecovery(Path.Combine(scratch, "recovery"));
+                passed += SystemProxyConnectionTests.Run(Path.Combine(scratch, "proxy-connections"));
+                passed += ConnectionProbeTests.Run(Path.Combine(scratch, "connection-probes"));
+                passed += FirewallTests.Run(Path.Combine(scratch, "firewall"));
+                passed += SubscriptionDownloadTests.Run(Path.Combine(scratch, "subscription-download"));
+                passed += StartupRegressionTests.Run(project, Path.Combine(scratch, "startup-regressions"));
+                string compatibilityCore = Path.Combine(project, "dependencies", "mihomo", architecture, "mihomo.exe");
+                passed += ProfileTests.RunCoreCompatibilityAsync(compatibilityCore, Path.Combine(scratch, "dns-compatibility")).GetAwaiter().GetResult();
+                Console.WriteLine("PASS connection readiness, LAN/RAS recovery, scoped firewall commands and subscription download regression groups");
                 var native = new WinInetProxyBackend().Read();
                 Assert(native != null, "Native WinINet snapshot can be read (no write)");
                 Task runtime = TestRuntime(project, Path.Combine(scratch, "runtime"));

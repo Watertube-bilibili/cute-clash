@@ -1,6 +1,6 @@
 # Third-party notices
 
-This project uses the following unmodified upstream artifacts. Preserve this directory when preparing a distribution.
+This project uses the following upstream artifacts and source adaptations. Preserve this directory when preparing a distribution.
 
 | Component | Version | License / notice |
 | --- | --- | --- |
@@ -9,6 +9,22 @@ This project uses the following unmodified upstream artifacts. Preserve this dir
 | YamlDotNet | 16.3.0, net6.0 in normal releases; net47 for the developer Framework build | MIT; see `YamlDotNet-MIT.txt` |
 | .NET runtime / Windows Desktop | 6.0.36 | Original NuGet package licenses under `licenses/dotnet` in binary packages; Windows distribution terms in `dotnet-Library-LICENSE.txt`, plus original third-party notices |
 | NSIS | 3.12 | Installer runtime and build-tool notices in `installer/NSIS-LICENSE.txt` in source and `licenses/NSIS-LICENSE.txt` in binary packages |
+| sysproxy-rs Windows proxy implementation | commit `44aaf00ec9c6779e5a461a55d882eddff7841c98` | MIT; source adaptation in `src/SystemProxy.cs`, original notice in `sysproxy-rs-MIT.txt` |
+
+## Windows system proxy source adaptation
+
+The LAN and Unicode RAS connection enumeration and per-connection WinINet option application in `src/SystemProxy.cs` are adapted to C# from [sysproxy-rs `src/windows.rs`](https://github.com/clash-verge-rev/sysproxy-rs/blob/44aaf00ec9c6779e5a461a55d882eddff7841c98/src/windows.rs), exact commit `44aaf00ec9c6779e5a461a55d882eddff7841c98`. Upstream copyright: Copyright (c) 2022 zzzgydi. The original MIT license is preserved in `sysproxy-rs-MIT.txt`. Cute Clash adds separate recovery journals and readback checks for individual connections; no Rust binary or runtime from this project is bundled.
+
+## Open-source design references
+
+The following projects informed independently written C# implementations. These are implementation/design references, not a claim that their Rust or TypeScript source text or application binaries are included:
+
+- **Clash Party firewall compatibility**: [PR #1788](https://github.com/mihomo-party-org/clash-party/pull/1788), merge commit [`9ea9da7d586d2fd5115fc7cfeb42b2825210cb8e`](https://github.com/mihomo-party-org/clash-party/commit/9ea9da7d586d2fd5115fc7cfeb42b2825210cb8e), replaces PowerShell NetSecurity commands with `netsh advfirewall` for Windows 7. Cute Clash uses its own command runner and rules scoped to the exact core executable, with separate TCP/UDP ownership and cleanup.
+- **Clash Party subscription downloads**: [`src/main/config/profile.ts`](https://github.com/mihomo-party-org/clash-party/blob/364578f21007cdea0a5b4304acebfa7cf5655b1f/src/main/config/profile.ts), commit `364578f21007cdea0a5b4304acebfa7cf5655b1f`; reference for explicit direct/core-proxy download routes.
+- **Clash Verge Rev subscription downloads**: [`src-tauri/src/feat/profile.rs`](https://github.com/clash-verge-rev/clash-verge-rev/blob/6a752994cf5f33c85a21ce3a590ff250b80e9846/src-tauri/src/feat/profile.rs), commit `6a752994cf5f33c85a21ce3a590ff250b80e9846`; reference for fallback between download routes.
+- **Clash Verge Rev TUN configuration**: [`src-tauri/src/config/clash.rs`](https://github.com/clash-verge-rev/clash-verge-rev/blob/22e3f1ac8aefe4102ae2eb646a11a1ec614e8576/src-tauri/src/config/clash.rs) and [`src-tauri/src/enhance/tun.rs`](https://github.com/clash-verge-rev/clash-verge-rev/blob/22e3f1ac8aefe4102ae2eb646a11a1ec614e8576/src-tauri/src/enhance/tun.rs), commit `22e3f1ac8aefe4102ae2eb646a11a1ec614e8576`; references for application-owned TUN defaults and preserving provider DNS fields.
+
+Clash Party and Clash Verge Rev publish their application source under the GPL. Cute Clash's own new implementations remain covered by this repository's GPL-3.0-or-later license. These references do not imply endorsement, and their interfaces, icons and application binaries are not redistributed. See [implementation references](../docs/OPEN-SOURCE-REFERENCES.md) for the division between source adaptation, bundled components and design references.
 
 ## Mihomo source and redistribution
 

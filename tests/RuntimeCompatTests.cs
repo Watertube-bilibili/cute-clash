@@ -72,7 +72,7 @@ namespace CuteClash.Tests
             Check(proxy.Restore() && backend.Current.SameAs(original) && !proxy.HasJournal, "Legacy recovery journal restores PAC and flags without native proxy writes");
             proxy.Enable(34567);
             var journal = new JavaScriptSerializer().Deserialize<ProxyJournal>(File.ReadAllText(Path.Combine(directory, "proxy-recovery.json")));
-            Check(journal.Original.SameAs(original) && journal.Applied.SameAs(applied), "New recovery journal preserves both snapshots");
+            Check(journal.Connections.Count == 1 && journal.Connections[0].Original.SameAs(original) && journal.Connections[0].Applied.SameAs(applied), "New recovery journal preserves both snapshots");
             Check(proxy.Restore() && backend.Current.SameAs(original), "New recovery journal can restore the prior state");
         }
         private sealed class FakeProxy : IProxyBackend

@@ -43,7 +43,7 @@ if ($RunTests) {
 if ($Package) {
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $sourceZip = Join-Path $distRoot 'cute-clash-0.3.0-framework-source.zip'
+    $sourceZip = Join-Path $distRoot 'cute-clash-0.3.1-framework-source.zip'
     if (Test-Path -LiteralPath $sourceZip) { Remove-Item -LiteralPath $sourceZip }
     $archive = [IO.Compression.ZipFile]::Open($sourceZip, [IO.Compression.ZipArchiveMode]::Create)
     try {
@@ -64,12 +64,12 @@ if ($Package) {
         $bundledSources = Join-Path (Join-Path $distRoot "cute-clash-$arch") 'sources'
         New-Item -ItemType Directory -Path $bundledSources -Force | Out-Null
         Copy-Item -LiteralPath $sourceZip -Destination $bundledSources -Force
-        $zip = Join-Path $distRoot "cute-clash-0.3.0-framework-$arch.zip"
+        $zip = Join-Path $distRoot "cute-clash-0.3.1-framework-$arch.zip"
         if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip }
         [IO.Compression.ZipFile]::CreateFromDirectory((Join-Path $distRoot "cute-clash-$arch"), $zip, [IO.Compression.CompressionLevel]::Optimal, $true)
         Write-Output "Packaged $zip"
     }
-    Get-ChildItem -LiteralPath $distRoot -Filter 'cute-clash-0.3.0-framework-*.zip' | ForEach-Object {
+    Get-ChildItem -LiteralPath $distRoot -Filter 'cute-clash-0.3.1-framework-*.zip' | ForEach-Object {
         $digest = Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256
         '{0}  {1}' -f $digest.Hash.ToLowerInvariant(), $_.Name
     } | Set-Content -LiteralPath (Join-Path $distRoot 'SHA256SUMS-framework.txt') -Encoding ASCII

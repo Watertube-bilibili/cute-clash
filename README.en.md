@@ -4,18 +4,18 @@
 
 [简体中文](README.md) · **English**
 
-A native Clash / Mihomo desktop client for **Windows 7 SP1, Windows 10 and Windows 11**, with Chinese and English interfaces. Version **0.3.0** includes its own .NET runtime and native support libraries: no separate .NET Framework, .NET Desktop Runtime or VC++ installation is needed. The approved navy kitten artwork and interface remain unchanged. No Electron, WebView or browser runtime is required.
+A native Clash / Mihomo desktop client for **Windows 7 SP1, Windows 10 and Windows 11**, with Chinese and English interfaces. Version **0.3.1** includes its own .NET runtime and native support libraries: no separate .NET Framework, .NET Desktop Runtime or VC++ installation is needed. The approved navy kitten artwork and interface remain unchanged. No Electron, WebView or browser runtime is required.
 
-**Validation status:** x86 and x64 builds are tested on the Windows 11 development machine. Windows 7 SP1 and Windows 10 are target systems but still require machine/VM acceptance. Real remote proxy handshakes and TUN routing remain untested. Upstream compatibility statements are not a substitute for those tests.
+**0.3.1 is a connection repair preview.** A Windows 7 SP1 x64 user reported that 0.3.0 showed Connected without working proxy traffic. This release addresses reproduced listener failures, missing dial-up proxy handling and download behavior, and checks the actual TUN adapter and routes. Tests run on Windows 11; Windows 7 machine/VM acceptance remains pending. These results do not establish that the reported machine is fixed. See the [changes](CHANGELOG.md) and [open-source references](docs/OPEN-SOURCE-REFERENCES.md).
 
 ## Download
 
-Use [GitHub Releases](https://github.com/Watertube-bilibili/cute-clash/releases/latest) for ready-to-run downloads:
+Use the [0.3.1 repair preview Release](https://github.com/Watertube-bilibili/cute-clash/releases/tag/v0.3.1) for downloads with the runtime included:
 
 | Windows architecture | Installer | Portable ZIP |
 | --- | --- | --- |
-| 64-bit | [x64 setup](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x64-setup.exe) | [x64 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x64.zip) |
-| 32-bit | [x86 setup](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x86-setup.exe) | [x86 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.0/cute-clash-0.3.0-windows-x86.zip) |
+| 64-bit | [x64 setup](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.1/cute-clash-0.3.1-windows-x64-setup.exe) | [x64 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.1/cute-clash-0.3.1-windows-x64.zip) |
+| 32-bit | [x86 setup](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.1/cute-clash-0.3.1-windows-x86-setup.exe) | [x86 ZIP](https://github.com/Watertube-bilibili/cute-clash/releases/download/v0.3.1/cute-clash-0.3.1-windows-x86.zip) |
 
 Both include the same runtime. Setup adds shortcuts, an uninstaller and optional `clash://` handling. Extract the entire portable ZIP; copying only its EXE will not work. Releases include checksums, application source and complete Mihomo source materials.
 
@@ -66,7 +66,7 @@ Source profiles live in `profiles`; the managed `core/runtime.yaml` is removed w
 
 Provider caches are written under `providers/<profile-id>` with managed names. Absolute paths and directory traversal in imported provider paths are rejected. Local `type: file` provider contents must be placed in the managed path shown by the runtime configuration; arbitrary source-relative files are not copied automatically. HTTP/HTTPS providers download normally. GEO rules may require the core to fetch a database on first use.
 
-System proxy changes affect the current user's default WinINet connection, including saved PAC / auto-detect settings for restoration. They do not change machine-wide WinHTTP or every VPN/dial-up connection. Use TUN when broader application coverage is required.
+System proxy changes affect the current user's WinINet LAN connection and enumerated dial-up / VPN connections. Each connection's PAC / auto-detect settings are saved separately and writes are read back. Failed changes attempt rollback; restoration preserves another application's changes. Machine-wide WinHTTP remains unchanged. Use TUN when broader application coverage is required.
 
 ## Build
 

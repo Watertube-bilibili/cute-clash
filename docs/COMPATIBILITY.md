@@ -1,10 +1,10 @@
 # Windows 兼容性与运行环境
 
-核对日期：2026-09-22。Cute Clash 是 Windows 桌面软件，面向 **Windows 7 SP1、Windows 10、Windows 11**，并持续保留 Windows 7 兼容性。32 位系统用 x86，64 位系统建议 x64。
+核对日期：2026-09-25。Cute Clash 是 Windows 桌面软件，面向 **Windows 7 SP1、Windows 10、Windows 11**。Windows 7 是最低兼容目标，仍缺目标系统验收；0.3.0 收到 Win7 SP1 x64 显示已连接但不能代理的报告，0.3.1 是针对已定位缺陷的修复预览。32 位系统用 x86，64 位系统建议 x64。
 
 ## 不需要安装系统 .NET
 
-0.3.0 的安装包和便携 ZIP 都使用 Windows Forms，自带 **.NET 6.0.36**、对应架构的 CoreCLR、Windows Desktop 组件、UCRT API-set DLL 和 `vcruntime140_cor3.dll`。这些文件只在应用目录内使用，不注册或安装系统级 .NET，也不修改 Windows 的 .NET Framework。用户不需要安装 SDK、PowerShell、.NET Framework 或另一个 .NET Runtime。
+0.3.1 的安装包和便携 ZIP 都使用 Windows Forms，自带 **.NET 6.0.36**、对应架构的 CoreCLR、Windows Desktop 组件、UCRT API-set DLL 和 `vcruntime140_cor3.dll`。这些文件只在应用目录内使用，不注册或安装系统级 .NET，也不修改 Windows 的 .NET Framework。用户不需要安装 SDK、PowerShell、.NET Framework 或另一个 .NET Runtime。
 
 系统 .NET Framework 安装失败不会再阻止这个版本仅因缺少 Framework 而启动。若 Windows 自身缺少加载器补丁、系统文件损坏或驱动条件不满足，仍需要处理具体系统问题；应用本地运行时不能代替 Windows 系统组件。
 
@@ -33,7 +33,7 @@ Windows 7 的相关官方依据：
 | 部件 | 版本 | 选择说明 |
 | --- | --- | --- |
 | Mihomo | v1.19.31 | 官方 Windows amd64-v1 / 386；x64 v1 适合较老 CPU |
-| Wintun | 0.14.1 | 与核心位数匹配的官方签名 DLL；放在 `core` 内 |
+| Wintun | 0.14.1 | Mihomo 内嵌匹配架构的驱动加载 DLL；`core` 中另保留官方 DLL |
 | YamlDotNet | 16.3.0 | 普通包使用 net6.0 程序集；开发者 Framework 工程使用 net47 |
 | GUI runtime | .NET 6.0.36 | 每个包内自带对应位数运行环境 |
 
@@ -42,6 +42,10 @@ Windows 7 的相关官方依据：
 Clash 是配置格式、控制接口和客户端生态的通称，不是单一节点传输协议。当前核心可处理 Shadowsocks / SS2022、VMess、VLESS / Reality、Trojan、Hysteria2、TUIC v5、WireGuard、AnyTLS 等配置。模板只做语法校验，不代表所有服务器和新扩展都完成互通测试。
 
 TUN 使用 Wintun + gVisor，需要管理员权限创建网卡和路由。程序安装与普通系统代理操作不需要因此提升安装器权限。真实 TUN DNS/TCP/UDP 流量、停止后路由恢复及其他 VPN 共存仍需目标机验收。
+
+0.3.1 使用 Win7 提供的 `netsh advfirewall` 为当前核心设置入站 TCP / UDP 规则，不依赖新系统的 PowerShell NetSecurity 模块，也不启动或关闭系统防火墙服务。断开时尝试清理本次规则。若防火墙命令失败，界面保留警告；程序仍检查实际网卡与路由。TUN 的 `strict-route` 设为 false，减少强制依赖 Windows 过滤平台的情况，不能据此承诺严格 DNS 防泄漏。内部 DNS resolver 保持启用，劫持 UDP 和 TCP 53，不再额外占用 1053 端口。
+
+“已连接”现在要求本地 SOCKS5 免认证握手成功；启用 TUN 时还要求网卡为 Up、有 IPv4 地址，且三处 IPv4 目的地址的最佳路由指向该网卡。这些是本机就绪检查，不会探测外网，不证明远程节点、DNS 或 TUN 实际转发已成功。其他 VPN / 手动路由优先接管检测地址时会报告冲突。
 
 ## VxKex NEXT
 

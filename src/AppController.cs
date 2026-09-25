@@ -26,6 +26,7 @@ namespace CuteClash
         public bool IsAdmin { get { return new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator); } }
         public string CoreVersion { get; private set; }
         public string LastError { get; private set; }
+        public string ConnectionWarning { get; private set; }
         public event Action<string> Log;
         public event Action StateChanged;
         private readonly ProfileStore store;
@@ -45,6 +46,8 @@ namespace CuteClash
         private int activeControllerPort;
         private int activeMixedPort;
         private volatile string tunStartupError;
+        private volatile string mixedStartupError;
+        private WindowsFirewall tunFirewall;
         public static string DefaultDataDirectory()
         {
             string root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -117,15 +120,30 @@ namespace CuteClash
             EnsureCore();
             if (String.IsNullOrEmpty(Settings.SelectedProfileId)) throw new InvalidOperationException(Localization.T("请先在配置页面导入并选择 Clash / Mihomo YAML 配置。", "Import and select a Clash / Mihomo YAML profile on the Profiles page first."));
             if (Settings.TunEnabled && !IsAdmin) throw new InvalidOperationException(Localization.T("TUN 需要管理员权限。请断开连接后使用设置页的管理员重启。", "TUN requires administrator privileges. Disconnect, then restart as administrator from Settings."));
-            if (Settings.TunEnabled && !File.Exists(Path.Combine(Path.GetDirectoryName(corePath), "wintun.dll")))
-                throw new FileNotFoundException(Localization.T("缺少与内核架构匹配的 wintun.dll，请重新解压完整软件包。", "wintun.dll matching the core architecture is missing. Extract the complete application package again."));
-            string runtime = store.BuildRuntimeConfig(Settings, secret, Path.Combine(coreHome, "runtime.yaml"));
-            await ValidateConfigFileAsync(runtime).ConfigureAwait(false);
-            CheckPort(Settings.MixedPort); CheckPort(Settings.ControllerPort);
+            // The pinned Mihomo binary embeds its matching Wintun driver loader.
+            CheckPort(Settings.MixedPort); CheckUdpPort(Settings.MixedPort); CheckPort(Settings.ControllerPort);
             activeControllerPort = Settings.ControllerPort; activeMixedPort = Settings.MixedPort;
-            stopping = false; ready = false; tunStartupError = null;
+            stopping = false; ready = false; tunStartupError = null; mixedStartupError = null; ConnectionWarning = null;
             try
             {
+                string runtime = store.BuildRuntimeConfig(Settings, secret, Path.Combine(coreHome, "runtime.yaml"));
+                await ValidateConfigFileAsync(runtime).ConfigureAwait(false);
+                if (Settings.TunEnabled)
+                {
+                    tunFirewall = new WindowsFirewall(corePath);
+                    try
+                    {
+                        await Task.Run(delegate { tunFirewall.EnsureRules(); }).ConfigureAwait(false);
+                        WriteLog(Localization.T("TUN 核心的 Windows 防火墙规则已配置。", "Windows Firewall rules for the TUN core are configured."));
+                    }
+                    catch (Exception ex)
+                    {
+                        // A stopped/disabled firewall service is not proof that TUN cannot work.
+                        // Keep the warning visible and let the real adapter/route checks decide readiness.
+                        ConnectionWarning = Localization.T("防火墙规则未能配置，请检查日志；网卡就绪不代表外网已连通。", "Firewall rules could not be configured. Check the logs; adapter readiness does not prove Internet access.");
+                        WriteLog(ConnectionWarning + " " + ex.Message);
+                    }
+                }
                 job = new ProcessJob();
                 core = new Process { StartInfo = CoreStartInfo("-d " + Quote(coreHome) + " -f " + Quote(runtime)), EnableRaisingEvents = true };
                 core.OutputDataReceived += CoreOutput;
@@ -147,22 +165,34 @@ namespace CuteClash
                 }
                 if (!apiReady) throw new InvalidOperationException(Localization.T("内核控制接口启动超时。", "The core control API did not start in time. ") + (last == null ? "" : last.Message));
                 bool inboundReady = false; DateTime inboundDeadline = DateTime.UtcNow.AddSeconds(35);
+                string readinessReason = Localization.T("本地监听尚未就绪。", "Local listeners are not ready.");
                 while (DateTime.UtcNow < inboundDeadline)
                 {
+                    if (mixedStartupError != null) throw new InvalidOperationException(Localization.T("本地代理监听失败：", "Local proxy listener failed: ") + mixedStartupError);
                     if (Settings.TunEnabled && tunStartupError != null) throw new InvalidOperationException(Localization.T("TUN 初始化失败：", "TUN initialization failed: ") + tunStartupError);
                     if (core.HasExited) throw new InvalidOperationException(Localization.T("内核在网络初始化时退出。", "The core exited during network initialization."));
                     var actual = await ApiAsync("GET", "/configs", null).ConfigureAwait(false);
                     var tun = actual.ContainsKey("tun") ? actual["tun"] as Dictionary<string, object> : null;
                     bool mixedReady = actual.ContainsKey("mixed-port") && Convert.ToInt32(actual["mixed-port"]) == activeMixedPort;
                     bool tunReady = !Settings.TunEnabled || (tun != null && tun.ContainsKey("enable") && Convert.ToBoolean(tun["enable"]));
+                    if (mixedReady)
+                    {
+                        var mixedProbe = await ConnectionProbe.ProbeMixedPortAsync(activeMixedPort, 1000, CancellationToken.None).ConfigureAwait(false);
+                        mixedReady = mixedProbe.Ready; readinessReason = mixedProbe.Reason;
+                    }
+                    if (mixedReady && Settings.TunEnabled)
+                    {
+                        var tunProbe = ConnectionProbe.ProbeTunAdapter();
+                        tunReady = tunReady && tunProbe.Ready; readinessReason = tunProbe.Reason;
+                    }
                     if (mixedReady && tunReady) { inboundReady = true; break; }
                     await Task.Delay(250).ConfigureAwait(false);
                 }
-                if (!inboundReady) throw new InvalidOperationException(Localization.T("代理端口或 TUN 网卡初始化超时，请查看日志并检查端口、Wintun、Windows 更新和管理员权限。", "The proxy port or TUN adapter did not initialize in time. Check the logs, ports, Wintun, Windows updates, and administrator privileges."));
+                if (!inboundReady) throw new InvalidOperationException(Localization.T("连接检查未通过：", "Connection checks failed: ") + readinessReason);
                 ready = true;
                 if (Settings.SystemProxyEnabled) { StartWatchdog(); systemProxy.Enable(activeMixedPort); }
                 store.SaveSettings(Settings);
-                WriteLog(Settings.TunEnabled ? Localization.T("已连接，TUN 已请求启用。请结合日志及实际联网确认网卡和路由工作正常。", "Connected; TUN activation was requested. Check the logs and test connectivity to confirm the adapter and routing work correctly.") : Localization.T("已连接，HTTP / SOCKS5 监听 127.0.0.1:", "Connected. HTTP / SOCKS5 listening on 127.0.0.1:") + activeMixedPort);
+                WriteLog(Settings.TunEnabled ? Localization.T("本地代理握手、TUN 网卡及 IPv4 路由检查通过。外网连通性仍取决于所选节点和网络。", "Local proxy handshake, TUN adapter and IPv4 route checks passed. Internet access still depends on the selected node and network.") : Localization.T("本地代理握手通过，HTTP / SOCKS5 监听 127.0.0.1:", "Local proxy handshake passed. HTTP / SOCKS5 listening on 127.0.0.1:") + activeMixedPort);
             }
             catch { StopInternal(); throw; }
             Changed();
@@ -172,6 +202,8 @@ namespace CuteClash
             if (args.Data == null) return;
             if (Object.ReferenceEquals(sender, core) && args.Data.IndexOf("Start TUN listening error:", StringComparison.OrdinalIgnoreCase) >= 0)
                 tunStartupError = Redact(args.Data);
+            if (Object.ReferenceEquals(sender, core) && args.Data.IndexOf("Start Mixed", StringComparison.OrdinalIgnoreCase) >= 0 && args.Data.IndexOf("error:", StringComparison.OrdinalIgnoreCase) >= 0)
+                mixedStartupError = Redact(args.Data);
             WriteLog(args.Data);
         }
         private void CoreExited(object sender, EventArgs args)
@@ -201,6 +233,12 @@ namespace CuteClash
                 finally { core.Dispose(); core = null; }
             }
             if (job != null) { job.Dispose(); job = null; }
+            if (tunFirewall != null)
+            {
+                try { tunFirewall.RemoveRules(); } catch (Exception ex) { WriteLog(Localization.T("TUN 防火墙规则清理失败：", "Could not remove TUN firewall rules: ") + ex.Message); }
+                tunFirewall = null;
+            }
+            ConnectionWarning = null;
             string runtime = Path.Combine(coreHome, "runtime.yaml");
             if (File.Exists(runtime)) File.Delete(runtime);
             if (File.Exists(runtime + ".bak")) File.Delete(runtime + ".bak");
@@ -266,6 +304,7 @@ namespace CuteClash
             string oldSelection = Settings.SelectedProfileId;
             try
             {
+                WriteLog(Localization.T("配置内容已读取，正在校验配置及所需规则 / GEO 数据…", "Profile received. Validating configuration and required rules / GEO data…"));
                 await ValidateCandidateAsync(profile.Id).ConfigureAwait(false);
                 Settings.Profiles.Add(profile);
                 if (String.IsNullOrEmpty(Settings.SelectedProfileId)) Settings.SelectedProfileId = profile.Id;
@@ -281,6 +320,7 @@ namespace CuteClash
                 if (String.IsNullOrEmpty(original.SourceUrl)) throw new InvalidOperationException(Localization.T("这是本地文件配置；请重新导入更新后的 YAML。", "This profile comes from a local file. Import the updated YAML again."));
                 string content = await DownloadSubscriptionAsync(original.SourceUrl).ConfigureAwait(false);
                 ProfileInfo candidate = store.ImportText(original.Name, null, content);
+                WriteLog(Localization.T("订阅已下载，正在校验配置及所需规则 / GEO 数据…", "Subscription downloaded. Validating configuration and required rules / GEO data…"));
                 try { await ValidateCandidateAsync(candidate.Id).ConfigureAwait(false); }
                 finally { store.Delete(candidate.Id); }
                 string previous = File.ReadAllText(store.GetProfilePath(id)); DateTime oldDate = original.UpdatedAt;
@@ -330,7 +370,17 @@ namespace CuteClash
         {
             return Exclusive(delegate
             {
-                if (enabled && IsRunning) { StartWatchdog(); systemProxy.Enable(activeMixedPort); }
+                if (enabled && IsRunning)
+                {
+                    StartWatchdog();
+                    try { systemProxy.Enable(activeMixedPort); }
+                    catch
+                    {
+                        try { systemProxy.Restore(); }
+                        catch (Exception recovery) { WriteLog(Localization.T("系统代理恢复失败，恢复记录已保留：", "System proxy recovery failed; the recovery record was preserved: ") + recovery.Message); }
+                        throw;
+                    }
+                }
                 else if (!enabled) systemProxy.Restore();
                 Settings.SystemProxyEnabled = enabled; store.SaveSettings(Settings); return Task.FromResult(0);
             });
@@ -403,35 +453,10 @@ namespace CuteClash
                 }
             }
         }
-        private static async Task<string> DownloadSubscriptionAsync(string url)
+        private Task<string> DownloadSubscriptionAsync(string url)
         {
-            Uri uri;
-            if (!Uri.TryCreate(url, UriKind.Absolute, out uri) || (uri.Scheme != "https" && uri.Scheme != "http")) throw new ArgumentException(Localization.T("订阅地址必须是 HTTPS 或 HTTP URL。", "The subscription address must be an HTTPS or HTTP URL."));
-            using (var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate }))
-            using (var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
-            {
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("cute-clash/0.2.0 Clash.Meta");
-                try
-                {
-                    using (var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellation.Token).ConfigureAwait(false))
-                    {
-                        response.EnsureSuccessStatusCode();
-                        if (response.Content.Headers.ContentLength > 8 * 1024 * 1024) throw new InvalidDataException(Localization.T("订阅超过 8 MiB。", "The subscription exceeds 8 MiB."));
-                        using (var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                        using (var memory = new MemoryStream())
-                        {
-                            byte[] buffer = new byte[16384]; int count;
-                            while ((count = await stream.ReadAsync(buffer, 0, buffer.Length, cancellation.Token).ConfigureAwait(false)) > 0)
-                            {
-                                if (memory.Length + count > 8 * 1024 * 1024) throw new InvalidDataException(Localization.T("订阅超过 8 MiB。", "The subscription exceeds 8 MiB."));
-                                memory.Write(buffer, 0, count);
-                            }
-                            return Encoding.UTF8.GetString(memory.ToArray()).TrimStart('\uFEFF');
-                        }
-                    }
-                }
-                catch (Exception ex) { throw new InvalidOperationException(Localization.T("订阅下载失败。请检查地址、网络和 Windows 的 TLS 1.2 / 根证书更新。", "Could not download the subscription. Check its address, your network, and Windows TLS 1.2 / root certificate updates. ") + (ex is InvalidDataException ? ex.Message : "")); }
-            }
+            return SubscriptionDownloader.DownloadAsync(url, IsRunning ? activeMixedPort : 0, CancellationToken.None,
+                new SubscriptionDownloadOptions { Progress = WriteLog });
         }
         private void StartWatchdog()
         {
@@ -509,6 +534,19 @@ namespace CuteClash
             try { listener.Server.ExclusiveAddressUse = true; listener.Start(); }
             catch (SocketException) { throw new InvalidOperationException(Localization.Format("本机端口 {0} 已被占用，请在设置中改用其他端口。", "Local port {0} is already in use. Choose another port in Settings.", port)); }
             finally { listener.Stop(); }
+        }
+        private static void CheckUdpPort(int port)
+        {
+            // Mihomo opens TCP then UDP for mixed-port. A UDP failure closes TCP,
+            // although /configs may still report the requested mixed-port.
+            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+            {
+                try { socket.ExclusiveAddressUse = true; socket.Bind(new IPEndPoint(IPAddress.Loopback, port)); }
+                catch (SocketException)
+                {
+                    throw new InvalidOperationException(Localization.Format("本机 UDP 端口 {0} 已被占用，混合代理无法启动。请在设置中改用其他端口。", "Local UDP port {0} is already in use, so the mixed proxy cannot start. Choose another port in Settings.", port));
+                }
+            }
         }
         public void Dispose()
         {

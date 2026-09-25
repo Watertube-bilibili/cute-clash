@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1 — connection repair preview
+
+- Reject an occupied UDP mixed port before launching Mihomo and require a real local SOCKS5 handshake before reporting Connected. Reproduced the previous core/API mismatch with the bundled core.
+- Apply and verify WinINet proxy settings for LAN and Unicode dial-up / VPN connections, with separate recovery records and rollback. Adapted the MIT-licensed sysproxy-rs implementation used by Clash Verge.
+- Check the actual TUN adapter, IPv4 address and best routes before reporting TUN ready. Configure scoped core firewall rules with Windows 7-compatible netsh commands, following Clash Party's Windows 7 fix. Firewall failures remain visible.
+- Use non-strict TUN routing, retain TCP/UDP DNS interception and eliminate the unnecessary port 1053 listener. This does not promise strict DNS leak prevention.
+- Keep the managed loopback listener unauthenticated regardless of subscription inbound credentials, without changing the original profile.
+- Download subscriptions directly without inheriting system proxy/WPAD; retry via the running local core only after a network failure, with bounded deadlines and compressed/decoded size limits. Preserve valid subscription GEO download URLs and show the validation phase separately.
+- Keep the approved icon, interface layout, bilingual UI, tray controls, import links and bundled .NET runtime.
+
+This preview addresses reproduced implementation defects after a report that 0.3.0 showed Connected but did not work on Windows 7 SP1 x64. Windows 7 machine/VM acceptance and real remote TUN traffic remain unverified. Local tests do not establish that the user's machine is fixed.
+
 ## 0.3.0
 
 - Use **Cute Clash** consistently as the displayed product name across the app, tray, installer and release materials.

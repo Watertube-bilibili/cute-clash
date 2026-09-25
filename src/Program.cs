@@ -13,8 +13,8 @@ using System.Windows.Forms;
 [assembly: AssemblyCompany("Cute Clash contributors")]
 [assembly: AssemblyProduct("Cute Clash")]
 [assembly: AssemblyCopyright("Copyright © 2026 Cute Clash contributors")]
-[assembly: AssemblyVersion("0.3.0.0")]
-[assembly: AssemblyFileVersion("0.3.0.0")]
+[assembly: AssemblyVersion("0.3.1.0")]
+[assembly: AssemblyFileVersion("0.3.1.0")]
 #if NET6_0
 [assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v6.0")]
 #else

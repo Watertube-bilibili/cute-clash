@@ -572,6 +572,7 @@ namespace CuteClash
                 connectionTitle.Text = running ? Localization.T("代理内核运行中", "Proxy core is running") : Localization.T("尚未连接", "Disconnected");
                 connectionTitle.ForeColor = Color.White;
                 connectionHint.Text = running ? (settings.TunEnabled ? Localization.T("TUN 已启用，流量按当前路由模式处理。", "TUN is enabled. Traffic follows the current routing mode.") : settings.SystemProxyEnabled ? Localization.T("系统代理已启用，使用系统代理的应用可通过内核连接。", "System proxy is enabled. Apps that use it can connect through the core.") : Localization.T("内核已启动。启用系统代理，或让应用使用下方本地代理地址。", "The core is running. Enable system proxy or use the local proxy address below.")) : selected == null ? Localization.T("添加 Clash 配置，选择路由方式后开始连接。", "Add a Clash profile, choose routing options, then connect.") : Localization.T("当前配置已就绪。点击“开始连接”启动代理内核。", "Your profile is ready. Click Connect to start the proxy core.");
+                if (running && !String.IsNullOrEmpty(controller.ConnectionWarning)) connectionHint.Text = controller.ConnectionWarning;
                 overviewProfile.Text = selected == null ? Localization.T("尚未添加配置", "No profile added") : selected.Name;
                 overviewEndpoint.Text = Localization.T("本地代理  127.0.0.1:", "Local proxy  127.0.0.1:") + settings.MixedPort + "     ·     " + (running ? Localization.T("本次运行累计流量", "Traffic during this session") : Localization.T("连接后显示流量", "Traffic appears after connecting"));
                 systemProxy.Checked = settings.SystemProxyEnabled;

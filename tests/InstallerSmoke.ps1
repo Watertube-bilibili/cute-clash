@@ -1,5 +1,5 @@
-﻿#requires -Version 5.1
-param([switch]$Run, [string]$Version = '0.3.0')
+#requires -Version 5.1
+param([switch]$Run, [string]$Version = '0.3.1')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $testRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'artifacts\installer-smoke'))

@@ -98,6 +98,7 @@ namespace CuteClash
             YamlMappingNode root = Parse(text);
             CheckProviders(root, "proxy-providers", null);
             CheckProviders(root, "rule-providers", null);
+            CheckGeoUrls(root);
             return Serialize(root);
         }
 
@@ -113,10 +114,11 @@ namespace CuteClash
             string providerDirectory = Path.Combine(dataDirectory, "providers", settings.SelectedProfileId);
             CheckProviders(root, "proxy-providers", providerDirectory);
             CheckProviders(root, "rule-providers", providerDirectory);
+            CheckGeoUrls(root);
 
             string[] removed = { "external-controller-tls", "external-controller-unix", "external-controller-pipe",
                 "external-ui", "external-ui-name", "external-ui-url", "external-controller-cors", "script", "home-dir",
-                "log-file", "geox-url", "tunnels", "ss-config", "vmess-config", "tuic-server", "ebpf", "interface-name", "routing-mark",
+                "log-file", "tunnels", "ss-config", "vmess-config", "tuic-server", "ebpf", "interface-name", "routing-mark",
                 "ntp", "iptables", "external-doh-server", "external-controller-routing-mark" };
             foreach (string key in removed) Remove(root, key);
             Put(root, "mixed-port", Number(settings.MixedPort));
@@ -124,6 +126,10 @@ namespace CuteClash
             Put(root, "listeners", new YamlSequenceNode());
             Put(root, "allow-lan", Scalar("false"));
             Put(root, "bind-address", Scalar("127.0.0.1"));
+            // The app's local system proxy and SOCKS clients do not supply inbound
+            // credentials. Never inherit an airport's LAN proxy authentication policy.
+            Put(root, "authentication", new YamlSequenceNode());
+            Put(root, "skip-auth-prefixes", new YamlSequenceNode(Scalar("127.0.0.1/32"), Scalar("::1/128")));
             Put(root, "external-controller", Scalar("127.0.0.1:" + settings.ControllerPort));
             Put(root, "secret", Scalar(controllerSecret));
             Put(root, "mode", Scalar(settings.Mode));
@@ -134,14 +140,19 @@ namespace CuteClash
             Put(tun, "device", Scalar("cute-clash"));
             Put(tun, "auto-route", Scalar("true"));
             Put(tun, "auto-detect-interface", Scalar("true"));
-            Put(tun, "strict-route", Scalar("true"));
-            Put(tun, "dns-hijack", new YamlSequenceNode(Scalar("any:53")));
+            // Like Clash Verge Rev's default, avoid adding strict-route Windows DNS
+            // firewall filters; these can interfere with other network adapters.
+            Put(tun, "strict-route", Scalar("false"));
+            Put(tun, "dns-hijack", new YamlSequenceNode(Scalar("any:53"), Scalar("tcp://any:53")));
             Put(root, "tun", tun);
 
             YamlNode dnsNode = Get(root, "dns");
             if (dnsNode != null && !(dnsNode is YamlMappingNode)) throw new InvalidDataException(Localization.T("dns 必须是 YAML 映射。 ", "dns must be a YAML mapping."));
             YamlMappingNode dns = dnsNode as YamlMappingNode ?? new YamlMappingNode();
-            Put(dns, "listen", Scalar("127.0.0.1:1053"));
+            // Mihomo v1.19.31 creates its internal resolver independently of this
+            // optional UDP/TCP listener. TUN DNS hijacking calls that resolver directly,
+            // so a hard-coded local port only introduces conflicts with other software.
+            Put(dns, "listen", Scalar(""));
             if (settings.TunEnabled)
             {
                 Put(dns, "enable", Scalar("true"));
@@ -306,6 +317,25 @@ namespace CuteClash
             {
                 string key = ((YamlScalarNode)pair.Key).Value;
                 if (Get(target, key) == null) Put(target, key, pair.Value);
+            }
+        }
+
+        private static void CheckGeoUrls(YamlMappingNode root)
+        {
+            YamlNode node = Get(root, "geox-url");
+            if (node == null) return;
+            var urls = node as YamlMappingNode;
+            if (urls == null) throw new InvalidDataException(Localization.T("geox-url 必须是 HTTP / HTTPS 下载地址的映射。", "geox-url must be a mapping of HTTP / HTTPS download addresses."));
+            foreach (KeyValuePair<YamlNode, YamlNode> pair in urls.Children)
+            {
+                var value = pair.Value as YamlScalarNode;
+                string address = value == null ? null : value.Value;
+                Uri uri;
+                bool valid = !String.IsNullOrWhiteSpace(address) && address.Length <= 8192 &&
+                    Uri.TryCreate(address, UriKind.Absolute, out uri) && (uri.Scheme == "http" || uri.Scheme == "https") &&
+                    String.IsNullOrEmpty(uri.UserInfo) && String.IsNullOrEmpty(uri.Fragment);
+                if (valid) foreach (char c in address) if (Char.IsControl(c)) { valid = false; break; }
+                if (!valid) throw new InvalidDataException(Localization.T("geox-url 只能包含有效的 HTTP / HTTPS 下载地址，不能包含用户名、密码或片段。", "geox-url must contain valid HTTP / HTTPS download addresses without embedded credentials or fragments."));
             }
         }
 
